@@ -1,4 +1,4 @@
-export { MICRO, MICRO_N, pts, toPts, ceilToBigInt, roundToBigInt } from "./fixed.js";
+export { MICRO, MICRO_N, pts, toPts, ceilToBigInt, roundToBigInt } from "./fixed";
 export {
   type LmsrState,
   LmsrError,
@@ -8,5 +8,5 @@ export {
   tradeCost,
   applyTrade,
   sharesForBudget,
-} from "./lmsr.js";
-export { seedFromPriors, worstCaseLoss, worstCaseLossForPriors } from "./seed.js";
+} from "./lmsr";
+export { seedFromPriors, worstCaseLoss, worstCaseLossForPriors } from "./seed";

@@ -1,4 +1,4 @@
-import { MICRO_N, ceilToBigInt } from "./fixed.js";
+import { MICRO_N, ceilToBigInt } from "./fixed";
 
 /**
  * LMSR (Hanson) market maker over n outcomes.

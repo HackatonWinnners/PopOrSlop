@@ -1,5 +1,5 @@
-import { roundToBigInt, ceilToBigInt } from "./fixed.js";
-import { LmsrError } from "./lmsr.js";
+import { roundToBigInt, ceilToBigInt } from "./fixed";
+import { LmsrError } from "./lmsr";
 
 /**
  * Initial q so opening prices equal the prior: qᵢ = b · ln(priorᵢ).
