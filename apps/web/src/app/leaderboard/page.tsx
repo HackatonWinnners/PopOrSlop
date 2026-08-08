@@ -35,7 +35,9 @@ export default function LeaderboardPage() {
         {rows.map((r, i) => (
           <li key={r.handle} className="flex items-center gap-3 py-2 text-sm">
             <span className="w-6 text-right font-mono text-zinc-500">{i + 1}</span>
-            <span className="font-medium">@{r.handle}</span>
+            <a href={`/u/${r.handle}`} className="font-medium hover:underline">
+              @{r.handle}
+            </a>
             {r.team && <span className="rounded bg-zinc-800 px-1 text-xs text-zinc-400">{r.team}</span>}
             <span
               className={`ml-auto font-mono ${r.pnl >= 0n ? "text-emerald-400" : "text-red-400"}`}

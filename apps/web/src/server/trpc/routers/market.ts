@@ -2,7 +2,7 @@ import { type LmsrState as EngineState, pricesMicro } from "@poporslop/lmsr";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
-import { lmsrState, markets, resolutionProposals, trades, users } from "../../db/schema";
+import { companies, lmsrState, markets, resolutionProposals, trades, users } from "../../db/schema";
 import { publicProcedure, router } from "../trpc";
 
 export function toEngine(q: bigint[], b: bigint): EngineState {
@@ -134,6 +134,51 @@ export const marketRouter = router({
         .orderBy(desc(resolutionProposals.ts));
       return rows.filter((r) => r.status !== "draft");
     }),
+
+  /**
+   * The public "Batch Odds" surface (spec §9): the flagship cohort index plus
+   * live implied per-company rankings from the FUNDING_* singles.
+   */
+  batchOdds: publicProcedure.query(async () => {
+    const rows = await db
+      .select({ market: markets, q: lmsrState.q, companyName: companies.name })
+      .from(markets)
+      .leftJoin(lmsrState, eq(lmsrState.marketId, markets.id))
+      .leftJoin(companies, eq(companies.id, markets.companyId))
+      .where(inArray(markets.type, ["COHORT_INDEX", "FUNDING_BINARY", "SURVIVAL", "EXIT"]));
+
+    const index = rows.find((r) => r.market.type === "COHORT_INDEX");
+    const yesIdx = (m: typeof markets.$inferSelect) =>
+      m.outcomes.findIndex((o) => o.trim().toUpperCase() === "YES");
+
+    const ranking = rows
+      .filter((r) => r.market.type === "FUNDING_BINARY" && r.market.companyId && r.q)
+      .map((r) => {
+        const pm = pricesMicro(toEngine(r.q!, r.market.b));
+        const idx = yesIdx(r.market);
+        return {
+          company: r.companyName ?? r.market.title,
+          slug: r.market.slug,
+          title: r.market.title,
+          status: r.market.status,
+          yesMicro: idx >= 0 ? pm[idx]! : null,
+        };
+      })
+      .sort((a, b) => (b.yesMicro ?? 0) - (a.yesMicro ?? 0));
+
+    return {
+      index: index
+        ? {
+            slug: index.market.slug,
+            title: index.market.title,
+            outcomes: index.market.outcomes,
+            pricesMicro: index.q ? pricesMicro(toEngine(index.q, index.market.b)) : null,
+            criteriaHash: index.market.criteriaHash,
+          }
+        : null,
+      ranking,
+    };
+  }),
 
   stats: publicProcedure.query(async () => {
     const [row] = await db.execute<{ traders: bigint; trades: bigint }>(

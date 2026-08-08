@@ -46,7 +46,16 @@ interface ReadRow extends Record<string, unknown> {
   points_balance: bigint;
   is_system: boolean;
   flags: Record<string, unknown>;
+  user_created_at: Date;
 }
+
+/**
+ * Spec §8: accounts younger than 7 days get a tighter per-market exposure
+ * cap. Env-tunable because event mode (spec §12.2) wants the market's own
+ * 300-pt cap to govern instead: set NEW_ACCOUNT_CAP_PTS=300 (or higher).
+ */
+const NEW_ACCOUNT_AGE_MS = 7 * 24 * 3600 * 1000;
+const newAccountCapMicro = () => BigInt(process.env.NEW_ACCOUNT_CAP_PTS ?? 250) * 1_000_000n;
 
 /**
  * THE trade transaction — the only writer of lmsr_state. Serialized per
@@ -68,7 +77,7 @@ export async function executeTrade(req: TradeRequest): Promise<TradeResult> {
     const read = await tx.execute<ReadRow>(sql`
       SELECT m.status, m.close_at, m.outcomes, m.b, m.position_cap,
              s.q, s.version,
-             u.points_balance, u.is_system, u.flags
+             u.points_balance, u.is_system, u.flags, u.created_at AS user_created_at
       FROM markets m
       JOIN lmsr_state s ON s.market_id = m.id
       CROSS JOIN users u
@@ -124,6 +133,11 @@ export async function executeTrade(req: TradeRequest): Promise<TradeResult> {
     // Position cap: total cost basis across ALL outcomes of this market.
     if (row.position_cap !== null && cost > 0n && totalBasis + cost > row.position_cap) {
       throw new DomainError("POSITION_CAP");
+    }
+    // 7-day new-account exposure cap (spec §8) — the tighter bound wins.
+    const accountAge = Date.now() - new Date(row.user_created_at).getTime();
+    if (accountAge < NEW_ACCOUNT_AGE_MS && cost > 0n && totalBasis + cost > newAccountCapMicro()) {
+      throw new DomainError("POSITION_CAP", "new accounts are capped at 250 pts per market for 7 days");
     }
 
     const updated = await tx.execute(sql`

@@ -1,7 +1,16 @@
+import { pricesMicro } from "@poporslop/lmsr";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
-import { disputes, eventCompanyMatches, markets, resolutionProposals } from "../../db/schema";
+import {
+  disputes,
+  eventCompanyMatches,
+  lmsrState,
+  markets,
+  positions,
+  resolutionProposals,
+} from "../../db/schema";
+import { lockMarket } from "../../services/locks";
 import { checkInvariants } from "../../services/invariants";
 import { createMarket } from "../../services/markets";
 import {
@@ -207,6 +216,55 @@ export const adminRouter = router({
 
   /** The on-stage invariants panel (spec §12.6 acceptance ③). */
   invariants: adminProcedure.query(async () => checkInvariants()),
+
+  /**
+   * Unflagged insider enforcement (spec §8): void the trader's positions on
+   * one market via forced zero-cost sells (keeps the tape public and the
+   * positions↔trades recompute invariant intact — the AMM keeps their cost,
+   * swept to the treasury at resolution) and ban the account.
+   */
+  voidAndBan: adminProcedure
+    .input(z.object({ userId: z.string().uuid(), marketId: z.string().uuid() }))
+    .mutation(async ({ input }) => {
+      await db.transaction(async (tx) => {
+        await lockMarket(tx, input.marketId);
+        const [market] = await tx.select().from(markets).where(eq(markets.id, input.marketId));
+        const [state] = await tx.select().from(lmsrState).where(eq(lmsrState.marketId, input.marketId));
+        const pm = market && state ? pricesMicro({ q: state.q, b: market.b }) : [];
+        const pmLiteral = `{${pm.join(",")}}`;
+
+        const held = await tx
+          .select()
+          .from(positions)
+          .where(and(eq(positions.userId, input.userId), eq(positions.marketId, input.marketId)));
+        for (const pos of held) {
+          if (pos.shares === 0n) continue;
+          // Forced sale at price zero: shares vanish, cost stays spent (the
+          // points remain in the AMM pool and land in the treasury at sweep).
+          // cost = 0 keeps trades ≡ ledger flow; q is untouched on purpose.
+          await tx.execute(sql`
+            INSERT INTO trades (user_id, market_id, outcome_idx, delta_shares, cost,
+                                p_before, p_after, self_flagged)
+            SELECT ${input.userId}, ${input.marketId}, ${pos.outcomeIdx},
+                   ${-pos.shares}, 0,
+                   ${pmLiteral}::integer[], ${pmLiteral}::integer[], false
+          `);
+          await tx
+            .update(positions)
+            .set({ shares: 0n })
+            .where(
+              and(
+                eq(positions.userId, input.userId),
+                eq(positions.marketId, input.marketId),
+                eq(positions.outcomeIdx, pos.outcomeIdx),
+              ),
+            );
+        }
+        await tx.execute(
+          sql`UPDATE users SET flags = flags || '{"banned": true}' WHERE id = ${input.userId}`,
+        );
+      });
+    }),
 
   /** Recent oracle events with their match state — the W1 review queue. */
   oracleEvents: adminProcedure

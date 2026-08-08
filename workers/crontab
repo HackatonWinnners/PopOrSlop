@@ -19,3 +19,6 @@ WORKDIR=~/PopOrSlop/workers
 
 # Auto-resolver drafts proposals right after the matcher pass.
 10 13 * * * cd $WORKDIR && $PY -m poporslop_workers.cli auto_resolver >> /tmp/poporslop-workers.log 2>&1
+
+# Wayback backfill: small batches hourly (anonymous SPN2 is heavily throttled).
+30 * * * * cd $WORKDIR && $PY -m poporslop_workers.cli archive_backfill >> /tmp/poporslop-workers.log 2>&1

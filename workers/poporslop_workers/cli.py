@@ -5,6 +5,7 @@ import json
 import sys
 from datetime import date, datetime, timedelta
 
+from .archive_backfill import run as run_archive_backfill
 from .auto_resolver import run as run_auto_resolver
 from .matcher import run as run_matcher
 from .sources.companies_house import run as run_companies_house
@@ -24,6 +25,7 @@ def main() -> None:
     sub.add_parser("insolvenz_de", help="search DE insolvency notices for tracked companies")
     sub.add_parser("matcher", help="link unmatched oracle_events to companies")
     sub.add_parser("auto_resolver", help="draft proposals from confirmed matches")
+    sub.add_parser("archive_backfill", help="save evidence URLs to the Wayback Machine")
 
     args = parser.parse_args()
     if args.job == "edgar_formd":
@@ -37,6 +39,8 @@ def main() -> None:
         result = run_matcher()
     elif args.job == "auto_resolver":
         result = run_auto_resolver()
+    elif args.job == "archive_backfill":
+        result = run_archive_backfill()
     else:  # pragma: no cover
         parser.error(f"unknown job {args.job}")
         return

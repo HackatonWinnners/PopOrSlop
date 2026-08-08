@@ -92,6 +92,22 @@ describe("trade transaction", () => {
     await expectClean();
   });
 
+  it("enforces the 7-day new-account exposure cap", async () => {
+    const userId = await makeUser();
+    const market = await makeMarket(); // no market-level cap
+    const prev = process.env.NEW_ACCOUNT_CAP_PTS;
+    process.env.NEW_ACCOUNT_CAP_PTS = "50";
+    try {
+      await executeTrade({ userId, marketId: market.id, outcomeIdx: 0, budget: pts(40) });
+      await expect(
+        executeTrade({ userId, marketId: market.id, outcomeIdx: 0, budget: pts(20) }),
+      ).rejects.toThrow(/new accounts are capped/);
+    } finally {
+      process.env.NEW_ACCOUNT_CAP_PTS = prev;
+    }
+    await expectClean();
+  });
+
   it("enforces the maxCost slippage bound", async () => {
     const userId = await makeUser();
     const market = await makeMarket();

@@ -311,13 +311,17 @@ export const oddsSnapshots = pgTable(
   (t) => [primaryKey({ columns: [t.marketId, t.ts] })],
 );
 
-export const waitlistSignups = pgTable("waitlist_signups", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  email: text("email").notNull(),
-  fundName: text("fund_name"),
-  note: text("note"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const waitlistSignups = pgTable(
+  "waitlist_signups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    fundName: text("fund_name"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("waitlist_email_unique").on(t.email)],
+);
 
 // P2 architectural insurance — schema reserved, unused in v1.
 export const apiClients = pgTable("api_clients", {

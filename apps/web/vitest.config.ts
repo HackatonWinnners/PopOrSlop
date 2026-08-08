@@ -9,6 +9,8 @@ export default defineConfig({
     env: {
       TEST: "1",
       TEST_DATABASE_URL: "postgres://poporslop:poporslop@localhost:5433/poporslop_test",
+      // Tests create fresh users; the 7-day cap is exercised explicitly, not ambiently.
+      NEW_ACCOUNT_CAP_PTS: "1000000",
     },
     testTimeout: 30_000,
     hookTimeout: 30_000,

@@ -2,6 +2,7 @@ import { adminRouter, disputeRouter } from "./routers/admin";
 import { marketRouter } from "./routers/market";
 import { portfolioRouter } from "./routers/portfolio";
 import { tradeRouter } from "./routers/trade";
+import { waitlistRouter } from "./routers/waitlist";
 import { publicProcedure, router } from "./trpc";
 
 export const appRouter = router({
@@ -10,6 +11,7 @@ export const appRouter = router({
   portfolio: portfolioRouter,
   admin: adminRouter,
   dispute: disputeRouter,
+  waitlist: waitlistRouter,
   me: publicProcedure.query(({ ctx }) =>
     ctx.user
       ? {
