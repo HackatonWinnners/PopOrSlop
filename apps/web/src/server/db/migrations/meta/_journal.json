@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786191175093,
+      "tag": "0000_special_frightful_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786191189169,
+      "tag": "0001_system_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786191367212,
+      "tag": "0002_resolution_sweep_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786191420056,
+      "tag": "0003_daily_blob",
+      "breakpoints": true
+    }
+  ]
+}

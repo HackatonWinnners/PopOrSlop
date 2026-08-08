@@ -1,0 +1,14 @@
+{
+  "name": "poporslop",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @poporslop/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "db:up": "docker compose up -d db",
+    "db:generate": "pnpm --filter @poporslop/web db:generate",
+    "db:migrate": "pnpm --filter @poporslop/web db:migrate",
+    "invariants": "pnpm --filter @poporslop/web invariants"
+  },
+  "packageManager": "pnpm@10.17.1"
+}
