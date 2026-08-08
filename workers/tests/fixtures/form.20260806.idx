@@ -1,0 +1,13 @@
+Description:           Daily Index of EDGAR Dissemination Feed by Form Type
+Last Data Received:    August 6, 2026
+Comments:              webmaster@sec.gov
+Anonymous FTP:         ftp://ftp.sec.gov/edgar/
+
+Form Type   Company Name                                                  CIK         Date Filed  File Name
+---------------------------------------------------------------------------------------------------------------
+10-K        BIG OLD PUBLIC CO                                             104169      20260806    edgar/data/104169/0000104169-26-000123.txt
+D           ACME ROBOTICS INC                                             1998877     20260806    edgar/data/1998877/0001998877-26-000004.txt
+D           Schrodinbug Labs, Inc.                                        2001234     20260806    edgar/data/2001234/0002001234-26-000001.txt
+D/A         HOT RELOAD TECHNOLOGIES LLC                                   1887766     20260806    edgar/data/1887766/0001887766-26-000009.txt
+8-K         SOME OTHER FILER CORP                                         555555      20260806    edgar/data/555555/0000555555-26-000777.txt
+D           Unrelated Biotech Holdings LP                                 1777333     20260806    edgar/data/1777333/0001777333-26-000002.txt

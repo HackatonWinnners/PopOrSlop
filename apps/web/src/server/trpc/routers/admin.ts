@@ -1,7 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
-import { disputes, markets, resolutionProposals } from "../../db/schema";
+import { disputes, eventCompanyMatches, markets, resolutionProposals } from "../../db/schema";
 import { checkInvariants } from "../../services/invariants";
 import { createMarket } from "../../services/markets";
 import {
@@ -159,6 +159,55 @@ export const adminRouter = router({
 
   /** The on-stage invariants panel (spec §12.6 acceptance ③). */
   invariants: adminProcedure.query(async () => checkInvariants()),
+
+  /** Recent oracle events with their match state — the W1 review queue. */
+  oracleEvents: adminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).default(50) }))
+    .query(async ({ input }) => {
+      const rows = await db.execute<{
+        id: string;
+        source: string;
+        external_ref: string;
+        raw_url: string | null;
+        parsed: Record<string, unknown>;
+        fetched_at: Date;
+        company_id: string | null;
+        company_name: string | null;
+        confidence: number | null;
+        method: string | null;
+        match_status: string | null;
+      }>(sql`
+        SELECT e.id, e.source, e.external_ref, e.raw_url, e.parsed, e.fetched_at,
+               m.company_id, c.name AS company_name, m.confidence, m.method,
+               m.status AS match_status
+        FROM oracle_events e
+        LEFT JOIN event_company_matches m ON m.oracle_event_id = e.id
+        LEFT JOIN companies c ON c.id = m.company_id
+        ORDER BY (m.status = 'pending') DESC NULLS LAST, e.fetched_at DESC
+        LIMIT ${input.limit}
+      `);
+      return rows.rows;
+    }),
+
+  setMatchStatus: adminProcedure
+    .input(
+      z.object({
+        oracleEventId: z.string().uuid(),
+        companyId: z.string().uuid(),
+        status: z.enum(["confirmed", "rejected"]),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      await db
+        .update(eventCompanyMatches)
+        .set({ status: input.status })
+        .where(
+          and(
+            eq(eventCompanyMatches.oracleEventId, input.oracleEventId),
+            eq(eventCompanyMatches.companyId, input.companyId),
+          ),
+        );
+    }),
 });
 
 /** Non-admin dispute filing lives here to keep resolution imports together. */

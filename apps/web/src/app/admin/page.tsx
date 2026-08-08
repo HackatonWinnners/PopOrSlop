@@ -5,6 +5,7 @@ import { trpc } from "~/lib/trpc";
 import { CreateMarketForm } from "./create-market";
 import { ImportTeams } from "./import-teams";
 import { MarketRow } from "./market-row";
+import { OracleEvents } from "./oracle-events";
 
 export default function AdminPage() {
   const me = trpc.me.useQuery();
@@ -14,7 +15,7 @@ export default function AdminPage() {
     retry: false,
     enabled: !!me.data?.isAdmin,
   });
-  const [tab, setTab] = useState<"markets" | "create" | "import">("markets");
+  const [tab, setTab] = useState<"markets" | "create" | "import" | "oracle">("markets");
 
   if (me.data === null) return <p className="py-8 text-zinc-500">Not signed in.</p>;
   if (me.data && !me.data.isAdmin) return <p className="py-8 text-zinc-500">Admins only.</p>;
@@ -45,6 +46,7 @@ export default function AdminPage() {
             ["markets", "Markets"],
             ["create", "Create market"],
             ["import", "Team import"],
+            ["oracle", "Oracle events"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -59,6 +61,7 @@ export default function AdminPage() {
 
       {tab === "create" && <CreateMarketForm onDone={() => setTab("markets")} />}
       {tab === "import" && <ImportTeams onDone={() => setTab("markets")} />}
+      {tab === "oracle" && <OracleEvents />}
       {tab === "markets" && (
         <div className="space-y-2">
           {(markets.data ?? []).map((m) => (

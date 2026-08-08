@@ -1,0 +1,9 @@
+httpx
+lxml
+psycopg[binary]
+pydantic
+rapidfuzz
+tenacity
+
+[dev]
+pytest

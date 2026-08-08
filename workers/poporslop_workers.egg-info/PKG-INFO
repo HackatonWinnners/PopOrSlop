@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: poporslop-workers
+Version: 0.1.0
+Summary: Oracle ingestion workers: external sources → oracle_events → matches → proposal drafts
+Requires-Python: >=3.12
+Requires-Dist: httpx
+Requires-Dist: lxml
+Requires-Dist: psycopg[binary]
+Requires-Dist: pydantic
+Requires-Dist: rapidfuzz
+Requires-Dist: tenacity
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

@@ -2,7 +2,7 @@ import { type LmsrState as EngineState, pricesMicro } from "@poporslop/lmsr";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
-import { lmsrState, markets, trades, users } from "../../db/schema";
+import { lmsrState, markets, resolutionProposals, trades, users } from "../../db/schema";
 import { publicProcedure, router } from "../trpc";
 
 export function toEngine(q: bigint[], b: bigint): EngineState {
@@ -112,6 +112,25 @@ export const marketRouter = router({
         .where(inArray(markets.id, marketIds));
       const byId = new Map(ms.map((m) => [m.id, m]));
       return rows.map((r) => ({ ...r, market: byId.get(r.marketId) ?? null }));
+    }),
+
+  /** Posted resolution proposals + evidence bundles — public (spec: evidence tab). */
+  proposals: publicProcedure
+    .input(z.object({ marketId: z.string().uuid() }))
+    .query(async ({ input }) => {
+      const rows = await db
+        .select({
+          id: resolutionProposals.id,
+          outcomeIdx: resolutionProposals.outcomeIdx,
+          evidence: resolutionProposals.evidence,
+          proposer: resolutionProposals.proposer,
+          status: resolutionProposals.status,
+          ts: resolutionProposals.ts,
+        })
+        .from(resolutionProposals)
+        .where(eq(resolutionProposals.marketId, input.marketId))
+        .orderBy(desc(resolutionProposals.ts));
+      return rows.filter((r) => r.status !== "draft");
     }),
 
   stats: publicProcedure.query(async () => {

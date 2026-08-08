@@ -3,6 +3,7 @@
 import { use, useState } from "react";
 import { fmtProb } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
+import { EvidenceTab } from "./evidence-tab";
 import { PriceChart } from "./price-chart";
 import { TradePanel } from "./trade-panel";
 import { TradeTape } from "./trade-tape";
@@ -11,7 +12,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
   const { slug } = use(params);
   const market = trpc.market.bySlug.useQuery({ slug }, { refetchInterval: 2000 });
   const [selected, setSelected] = useState(0);
-  const [tab, setTab] = useState<"trade" | "criteria">("trade");
+  const [tab, setTab] = useState<"trade" | "criteria" | "evidence">("trade");
 
   if (market.isLoading) return <p className="py-8 text-zinc-500">Loading…</p>;
   if (!market.data) return <p className="py-8 text-zinc-500">Market not found.</p>;
@@ -59,24 +60,30 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
       <PriceChart marketId={m.id} outcomes={m.outcomes} />
 
       <div className="flex gap-4 border-b border-zinc-800 text-sm">
-        {(["trade", "criteria"] as const).map((t) => (
+        {(
+          [
+            ["trade", "Trade"],
+            ["criteria", "Resolution criteria"],
+            ["evidence", "Evidence"],
+          ] as const
+        ).map(([key, label]) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`pb-2 ${tab === t ? "border-b-2 border-emerald-400 font-semibold" : "text-zinc-500"}`}
+            key={key}
+            onClick={() => setTab(key)}
+            className={`pb-2 ${tab === key ? "border-b-2 border-emerald-400 font-semibold" : "text-zinc-500"}`}
           >
-            {t === "trade" ? "Trade" : "Resolution criteria"}
+            {label}
           </button>
         ))}
       </div>
 
-      {tab === "trade" ? (
-        m.status === "OPEN" ? (
+      {tab === "trade" &&
+        (m.status === "OPEN" ? (
           <TradePanel market={m} outcomeIdx={selected} />
         ) : (
           <p className="text-sm text-zinc-500">Trading closed ({m.status}).</p>
-        )
-      ) : (
+        ))}
+      {tab === "criteria" && (
         <div className="space-y-2">
           <pre className="whitespace-pre-wrap rounded border border-zinc-800 bg-zinc-900/50 p-3 text-sm text-zinc-300">
             {m.criteriaMd}
@@ -86,6 +93,7 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
           </p>
         </div>
       )}
+      {tab === "evidence" && <EvidenceTab marketId={m.id} outcomes={m.outcomes} />}
 
       <TradeTape marketId={m.id} outcomes={m.outcomes} />
     </div>

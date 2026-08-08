@@ -1,0 +1,16 @@
+pyproject.toml
+poporslop_workers/__init__.py
+poporslop_workers/cli.py
+poporslop_workers/matcher.py
+poporslop_workers.egg-info/PKG-INFO
+poporslop_workers.egg-info/SOURCES.txt
+poporslop_workers.egg-info/dependency_links.txt
+poporslop_workers.egg-info/requires.txt
+poporslop_workers.egg-info/top_level.txt
+poporslop_workers/common/__init__.py
+poporslop_workers/common/db.py
+poporslop_workers/common/http.py
+poporslop_workers/sources/__init__.py
+poporslop_workers/sources/edgar_formd.py
+tests/test_edgar_parse.py
+tests/test_matcher.py

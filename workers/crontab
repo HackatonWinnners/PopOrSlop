@@ -1,0 +1,14 @@
+# PopOrSlop worker schedule (install with `crontab -e` on the host that runs
+# workers; paths assume the repo at ~/PopOrSlop and the venv at workers/.venv).
+# All jobs are idempotent — double-fires and backfills are harmless.
+
+PY=~/PopOrSlop/workers/.venv/bin/python
+WORKDIR=~/PopOrSlop/workers
+
+# EDGAR daily indexes are complete by ~06:15 ET; run at 12:45 UTC.
+45 12 * * * cd $WORKDIR && $PY -m poporslop_workers.cli edgar_formd >> /tmp/poporslop-workers.log 2>&1
+
+# Matcher after each source window.
+0 13 * * * cd $WORKDIR && $PY -m poporslop_workers.cli matcher >> /tmp/poporslop-workers.log 2>&1
+
+# W2: insolvenz_de 2×/day, companies_house 4×/day, auto_resolver after matcher.

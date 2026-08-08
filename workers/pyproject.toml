@@ -1,0 +1,19 @@
+[project]
+name = "poporslop-workers"
+version = "0.1.0"
+description = "Oracle ingestion workers: external sources → oracle_events → matches → proposal drafts"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx",
+  "lxml",
+  "psycopg[binary]",
+  "pydantic",
+  "rapidfuzz",
+  "tenacity",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

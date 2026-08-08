@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<edgarSubmission xmlns="http://www.sec.gov/edgar/formd">
+  <primaryIssuer>
+    <cik>0001998877</cik>
+    <entityName>ACME ROBOTICS INC</entityName>
+    <entityType>Corporation</entityType>
+  </primaryIssuer>
+  <offeringData>
+    <industryGroup>
+      <industryGroupType>Other Technology</industryGroupType>
+    </industryGroup>
+    <typeOfFiling>
+      <dateOfFirstSale>
+        <value>2026-07-30</value>
+      </dateOfFirstSale>
+    </typeOfFiling>
+    <offeringSalesAmounts>
+      <totalOfferingAmount>7500000</totalOfferingAmount>
+      <totalAmountSold>7500000</totalAmountSold>
+    </offeringSalesAmounts>
+  </offeringData>
+</edgarSubmission>
