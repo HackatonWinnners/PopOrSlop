@@ -16,5 +16,21 @@ services:
       timeout: 2s
       retries: 15
 
+  # Full event stack: docker compose --profile full up
+  # (migrate + seed once via: pnpm db:migrate && pnpm seed:demo against the db)
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      DATABASE_URL: postgres://poporslop:poporslop@db:5432/poporslop
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-for-the-event}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:

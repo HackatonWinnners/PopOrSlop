@@ -1,14 +1,14 @@
+import { randomUUID } from "node:crypto";
 import {
   type LmsrState,
   applyTrade,
   pricesMicro,
   sharesForBudget,
 } from "@poporslop/lmsr";
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "../db/client";
-import { lmsrState, markets, positions, trades, users } from "../db/schema";
 import { DomainError } from "./errors";
-import { SYSTEM, postEntries } from "./ledger";
+import { SYSTEM } from "./ledger";
 import { lockMarket } from "./locks";
 
 export interface TradeRequest {
@@ -35,29 +35,59 @@ export interface TradeResult {
   pAfter: number[];
 }
 
+interface ReadRow extends Record<string, unknown> {
+  status: string;
+  close_at: Date;
+  outcomes: string[];
+  b: bigint;
+  position_cap: bigint | null;
+  q: string[];
+  version: number;
+  points_balance: bigint;
+  is_system: boolean;
+  flags: Record<string, unknown>;
+}
+
 /**
  * THE trade transaction — the only writer of lmsr_state. Serialized per
  * market by the advisory lock; the optimistic version bump is a tripwire
  * that turns any future locking bug into a loud abort instead of silent
  * state corruption.
+ *
+ * Hot path: the room-scale load test concentrates ~24 trades/s on one
+ * market, and every trade on it runs inside this one lock — so the work
+ * here is packed into 2 reads + 2 writes. The write CTE embeds the ledger
+ * contract postEntries() enforces elsewhere: one balanced TRADE group plus
+ * matching balance-cache updates, in the same statement.
  */
 export async function executeTrade(req: TradeRequest): Promise<TradeResult> {
   const { userId, marketId, outcomeIdx } = req;
   return db.transaction(async (tx) => {
     await lockMarket(tx, marketId);
 
-    const [market] = await tx.select().from(markets).where(eq(markets.id, marketId));
-    if (!market) throw new DomainError("MARKET_NOT_FOUND");
-    if (market.status !== "OPEN" || market.closeAt.getTime() <= Date.now()) {
+    const read = await tx.execute<ReadRow>(sql`
+      SELECT m.status, m.close_at, m.outcomes, m.b, m.position_cap,
+             s.q, s.version,
+             u.points_balance, u.is_system, u.flags
+      FROM markets m
+      JOIN lmsr_state s ON s.market_id = m.id
+      CROSS JOIN users u
+      WHERE m.id = ${marketId} AND u.id = ${userId}
+    `);
+    const row = read.rows[0];
+    if (!row) throw new DomainError("MARKET_NOT_FOUND");
+    if (row.is_system || (row.flags as Record<string, unknown>).banned) {
+      throw new DomainError("NOT_AUTHORIZED");
+    }
+    if (row.status !== "OPEN" || new Date(row.close_at).getTime() <= Date.now()) {
       throw new DomainError("MARKET_CLOSED");
     }
-    if (!Number.isInteger(outcomeIdx) || outcomeIdx < 0 || outcomeIdx >= market.outcomes.length) {
+    if (!Number.isInteger(outcomeIdx) || outcomeIdx < 0 || outcomeIdx >= row.outcomes.length) {
       throw new DomainError("BAD_STATE", `outcome ${outcomeIdx} out of range`);
     }
 
-    const [state] = await tx.select().from(lmsrState).where(eq(lmsrState.marketId, marketId));
-    if (!state) throw new DomainError("BAD_STATE", "missing lmsr_state");
-    const engine: LmsrState = { q: state.q, b: market.b };
+    const q = row.q.map(BigInt);
+    const engine: LmsrState = { q, b: row.b };
 
     let delta: bigint;
     if (req.deltaShares !== undefined && req.budget === undefined) {
@@ -70,19 +100,15 @@ export async function executeTrade(req: TradeRequest): Promise<TradeResult> {
     }
     if (delta === 0n) throw new DomainError("BAD_STATE", "trade size is zero");
 
-    const [position] = await tx
-      .select()
-      .from(positions)
-      .where(
-        and(
-          eq(positions.userId, userId),
-          eq(positions.marketId, marketId),
-          eq(positions.outcomeIdx, outcomeIdx),
-        ),
-      );
+    const posRead = await tx.execute<{ outcome_idx: number; shares: bigint; cost_basis: bigint }>(sql`
+      SELECT outcome_idx, shares, cost_basis FROM positions
+      WHERE user_id = ${userId} AND market_id = ${marketId}
+    `);
+    const held = posRead.rows.find((p) => p.outcome_idx === outcomeIdx)?.shares ?? 0n;
+    const totalBasis = posRead.rows.reduce((a, p) => a + p.cost_basis, 0n);
 
     // No shorting in v1: sell at most what you hold.
-    if (delta < 0n && (position?.shares ?? 0n) < -delta) {
+    if (delta < 0n && held < -delta) {
       throw new DomainError("CANNOT_SHORT", "cannot sell more shares than held");
     }
 
@@ -92,70 +118,57 @@ export async function executeTrade(req: TradeRequest): Promise<TradeResult> {
       if (delta > 0n && cost > req.maxCost) throw new DomainError("PRICE_MOVED");
       if (delta < 0n && -cost < -req.maxCost) throw new DomainError("PRICE_MOVED");
     }
-
-    const [trader] = await tx.select().from(users).where(eq(users.id, userId));
-    if (!trader || trader.isSystem) throw new DomainError("NOT_AUTHORIZED");
-    if ((trader.flags as Record<string, unknown>).banned) throw new DomainError("NOT_AUTHORIZED");
-    if (cost > 0n && trader.pointsBalance < cost) {
+    if (cost > 0n && row.points_balance < cost) {
       throw new DomainError("INSUFFICIENT_BALANCE");
     }
-
     // Position cap: total cost basis across ALL outcomes of this market.
-    if (market.positionCap !== null && cost > 0n) {
-      const [row] = await tx
-        .select({ basis: sql<bigint>`COALESCE(SUM(${positions.costBasis}), 0)::bigint` })
-        .from(positions)
-        .where(and(eq(positions.userId, userId), eq(positions.marketId, marketId)));
-      if ((row?.basis ?? 0n) + cost > market.positionCap) {
-        throw new DomainError("POSITION_CAP");
-      }
+    if (row.position_cap !== null && cost > 0n && totalBasis + cost > row.position_cap) {
+      throw new DomainError("POSITION_CAP");
     }
 
-    const updated = await tx
-      .update(lmsrState)
-      .set({ q: newQ, version: state.version + 1 })
-      .where(and(eq(lmsrState.marketId, marketId), eq(lmsrState.version, state.version)))
-      .returning({ version: lmsrState.version });
-    if (updated.length !== 1) {
+    const updated = await tx.execute(sql`
+      UPDATE lmsr_state SET q = ${`{${newQ.join(",")}}`}::bigint[], version = version + 1
+      WHERE market_id = ${marketId} AND version = ${row.version}
+    `);
+    if (updated.rowCount !== 1) {
       // Advisory lock should make this impossible — loud abort, not corruption.
       throw new DomainError("CONCURRENT_UPDATE", "lmsr_state version tripwire fired");
     }
 
     const pBefore = pricesMicro(engine);
-    const pAfter = pricesMicro({ q: newQ, b: market.b });
+    const pAfter = pricesMicro({ q: newQ, b: row.b });
+    const group = randomUUID();
 
-    const [tradeRow] = await tx
-      .insert(trades)
-      .values({
-        userId,
-        marketId,
-        outcomeIdx,
-        deltaShares: delta,
-        cost,
-        pBefore,
-        pAfter,
-        selfFlagged: req.selfFlagged ?? false,
-      })
-      .returning({ id: trades.id });
+    const write = await tx.execute<{ trade_id: bigint }>(sql`
+      WITH trade_ins AS (
+        INSERT INTO trades (user_id, market_id, outcome_idx, delta_shares, cost,
+                            p_before, p_after, self_flagged)
+        VALUES (${userId}, ${marketId}, ${outcomeIdx}, ${delta}, ${cost},
+                ${`{${pBefore.join(",")}}`}::integer[], ${`{${pAfter.join(",")}}`}::integer[],
+                ${req.selfFlagged ?? false})
+        RETURNING id
+      ),
+      pos AS (
+        INSERT INTO positions (user_id, market_id, outcome_idx, shares, cost_basis)
+        VALUES (${userId}, ${marketId}, ${outcomeIdx}, ${delta}, ${cost})
+        ON CONFLICT (user_id, market_id, outcome_idx)
+        DO UPDATE SET shares = positions.shares + EXCLUDED.shares,
+                      cost_basis = positions.cost_basis + EXCLUDED.cost_basis
+      ),
+      led AS (
+        INSERT INTO ledger (entry_group, user_id, delta, reason, ref_id)
+        SELECT ${group}, v.uid::uuid, v.d::bigint, 'TRADE', (SELECT id::text FROM trade_ins)
+        FROM (VALUES (${userId}, ${-cost}), (${SYSTEM.ammPool}, ${cost})) AS v(uid, d)
+        WHERE ${cost} <> 0
+      ),
+      bal AS (
+        UPDATE users SET points_balance = points_balance + v.d::bigint
+        FROM (VALUES (${userId}, ${-cost}), (${SYSTEM.ammPool}, ${cost})) AS v(uid, d)
+        WHERE users.id = v.uid::uuid AND ${cost} <> 0
+      )
+      SELECT (SELECT id FROM trade_ins) AS trade_id
+    `);
 
-    await tx
-      .insert(positions)
-      .values({ userId, marketId, outcomeIdx, shares: delta, costBasis: cost })
-      .onConflictDoUpdate({
-        target: [positions.userId, positions.marketId, positions.outcomeIdx],
-        set: {
-          shares: sql`${positions.shares} + ${delta}`,
-          costBasis: sql`${positions.costBasis} + ${cost}`,
-        },
-      });
-
-    if (cost !== 0n) {
-      await postEntries(tx, [
-        { userId, delta: -cost, reason: "TRADE", refId: String(tradeRow!.id) },
-        { userId: SYSTEM.ammPool, delta: cost, reason: "TRADE", refId: String(tradeRow!.id) },
-      ]);
-    }
-
-    return { tradeId: tradeRow!.id, deltaShares: delta, cost, pAfter };
+    return { tradeId: write.rows[0]!.trade_id, deltaShares: delta, cost, pAfter };
   });
 }

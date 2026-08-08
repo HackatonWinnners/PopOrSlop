@@ -11,6 +11,8 @@ const bodySchema = z.object({
 });
 
 // Naive per-IP rate limit — enough against QR-poster abuse at room scale.
+// Override for load tests: SIGNUP_RATE_LIMIT_PER_MIN=100000
+const LIMIT_PER_MIN = Number(process.env.SIGNUP_RATE_LIMIT_PER_MIN ?? 10);
 const hits = new Map<string, { count: number; resetAt: number }>();
 function rateLimited(ip: string): boolean {
   const now = Date.now();
@@ -20,7 +22,7 @@ function rateLimited(ip: string): boolean {
     return false;
   }
   h.count++;
-  return h.count > 10;
+  return h.count > LIMIT_PER_MIN;
 }
 
 export async function POST(req: Request) {

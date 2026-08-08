@@ -10,6 +10,8 @@
 8. **Evidence guarantee is `oracle_events.raw_content`** (gzipped fetch); archive.org SPN2 is best-effort with retry backfill.
 9. **Fallback naming "S26 accelerator batch"** kept in copy constants from day one (YC trademark risk, spec §18).
 10. **Scope contract:** anything not in the approved plan goes to `LATER.md`. W0 cutline is sacred.
+11. **Trade hot path is a single CTE write.** The load test (150 users, 30 trades/s, 80% on one market) showed the per-market advisory lock saturating at ~12 DB round trips per trade (p95 3.8s). The trade tx now does 2 reads + 2 writes (lmsr_state guard-update, then one CTE inserting trade + position upsert + balanced ledger group + balance updates), taking p95 to 275ms. This is the one sanctioned exception to "postEntries() is the only ledger writer" — the CTE embeds the same balanced-group contract, and the invariants suite polices it.
+12. **Local dev Postgres runs on port 5433** — the machine's own Postgres owns 5432.
 
 ## Adopted defaults for spec §15 blocking questions (overridable before W2 seeding)
 

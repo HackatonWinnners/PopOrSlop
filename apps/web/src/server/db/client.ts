@@ -16,7 +16,7 @@ export const pool =
   globalForDb.pgPool ??
   new pg.Pool({
     connectionString,
-    max: 10,
+    max: Number(process.env.PG_POOL_MAX ?? 20),
   });
 if (process.env.NODE_ENV !== "production") globalForDb.pgPool = pool;
 
