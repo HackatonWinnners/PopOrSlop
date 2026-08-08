@@ -17,6 +17,7 @@ type MarketSummary = {
 export function MarketRow({ market }: { market: MarketSummary }) {
   const utils = trpc.useUtils();
   const [confirmOutcome, setConfirmOutcome] = useState<number | null>(null);
+  const [withWindow, setWithWindow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const onSettled = () => {
     void utils.market.invalidate();
@@ -24,6 +25,13 @@ export function MarketRow({ market }: { market: MarketSummary }) {
   };
   const lock = trpc.admin.lockMarket.useMutation({ onSuccess: onSettled, onError: (e) => setError(e.message) });
   const resolve = trpc.admin.resolveNow.useMutation({
+    onSuccess: () => {
+      setConfirmOutcome(null);
+      onSettled();
+    },
+    onError: (e) => setError(e.message),
+  });
+  const propose = trpc.admin.postResolution.useMutation({
     onSuccess: () => {
       setConfirmOutcome(null);
       onSettled();
@@ -61,22 +69,39 @@ export function MarketRow({ market }: { market: MarketSummary }) {
 
       {market.status === "LOCKED" && (
         <div className="mt-2">
-          <p className="mb-1 text-xs text-zinc-500">Resolve to (immediate payout, no dispute window):</p>
+          <div className="mb-1 flex items-center gap-3 text-xs text-zinc-500">
+            <span>Resolve to:</span>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={withWindow}
+                onChange={(e) => setWithWindow(e.target.checked)}
+              />
+              open 48h dispute window (v1 mode; unchecked = instant stage payout)
+            </label>
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {market.outcomes.map((o, i) =>
               confirmOutcome === i ? (
                 <span key={i} className="flex items-center gap-1">
                   <button
-                    onClick={() =>
-                      resolve.mutate({
+                    onClick={() => {
+                      const args = {
                         marketId: market.id,
                         outcomeIdx: i,
                         evidence: [
-                          { source: "manual", summary: `Resolved on stage by admin: ${o}` },
+                          {
+                            source: "manual",
+                            summary: withWindow
+                              ? `Proposed by admin: ${o} (48h dispute window)`
+                              : `Resolved on stage by admin: ${o}`,
+                          },
                         ],
-                      })
-                    }
-                    disabled={resolve.isPending}
+                      };
+                      if (withWindow) propose.mutate({ ...args, disputeWindowHours: 48 });
+                      else resolve.mutate(args);
+                    }}
+                    disabled={resolve.isPending || propose.isPending}
                     className="rounded bg-emerald-500 px-2 py-1 text-xs font-bold text-zinc-950"
                   >
                     Confirm “{o}” ✓

@@ -3,6 +3,7 @@
 import { use, useState } from "react";
 import { fmtProb } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
+import { DisputeBanner } from "./dispute-banner";
 import { EvidenceTab } from "./evidence-tab";
 import { PriceChart } from "./price-chart";
 import { TradePanel } from "./trade-panel";
@@ -36,6 +37,8 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
         </div>
         <h1 className="mt-1 text-lg font-bold">{m.title}</h1>
       </header>
+
+      <DisputeBanner market={m} />
 
       {/* Outcome grid — tap to select for trading */}
       <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">

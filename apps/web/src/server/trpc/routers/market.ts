@@ -22,6 +22,8 @@ const marketSummary = (m: typeof markets.$inferSelect, q: bigint[] | null) => ({
   mClass: m.mClass,
   positionCap: m.positionCap,
   resolvedOutcome: m.resolvedOutcome,
+  proposedAt: m.proposedAt,
+  disputeDeadline: m.disputeDeadline,
   criteriaMd: m.criteriaMd,
   criteriaHash: m.criteriaHash,
   pricesMicro: q ? pricesMicro(toEngine(q, m.b)) : null,

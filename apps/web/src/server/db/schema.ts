@@ -150,6 +150,8 @@ export const markets = pgTable(
     mClass: smallint("m_class").notNull().default(0),
     positionCap: bigint("position_cap", { mode: "bigint" }),
     seedPriors: jsonb("seed_priors"),
+    /** Auto-resolver rule, e.g. {"rule":"funding_gte","amount_usd":5e6} or {"rule":"survival"}. */
+    resolverConfig: jsonb("resolver_config"),
     proposedAt: timestamp("proposed_at", { withTimezone: true }),
     disputeDeadline: timestamp("dispute_deadline", { withTimezone: true }),
     resolvedOutcome: smallint("resolved_outcome"),

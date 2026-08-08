@@ -11,4 +11,11 @@ WORKDIR=~/PopOrSlop/workers
 # Matcher after each source window.
 0 13 * * * cd $WORKDIR && $PY -m poporslop_workers.cli matcher >> /tmp/poporslop-workers.log 2>&1
 
-# W2: insolvenz_de 2×/day, companies_house 4×/day, auto_resolver after matcher.
+# Insolvenz portal 2×/day (its §4 InsoBekV search window is ~2 weeks).
+15 6,18 * * * cd $WORKDIR && $PY -m poporslop_workers.cli insolvenz_de >> /tmp/poporslop-workers.log 2>&1
+
+# Companies House 4×/day (needs CH_API_KEY in the environment).
+5 */6 * * * cd $WORKDIR && $PY -m poporslop_workers.cli companies_house >> /tmp/poporslop-workers.log 2>&1
+
+# Auto-resolver drafts proposals right after the matcher pass.
+10 13 * * * cd $WORKDIR && $PY -m poporslop_workers.cli auto_resolver >> /tmp/poporslop-workers.log 2>&1

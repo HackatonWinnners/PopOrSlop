@@ -49,6 +49,8 @@ export async function postResolution(opts: {
   evidence: EvidenceItem[];
   proposer: string;
   disputeWindowHours?: number;
+  /** Promote an existing draft (auto_resolver) instead of inserting a new row. */
+  fromProposalId?: string;
 }): Promise<void> {
   const windowMs = (opts.disputeWindowHours ?? 48) * 3600 * 1000;
   await db.transaction(async (tx) => {
@@ -62,13 +64,28 @@ export async function postResolution(opts: {
       throw new DomainError("BAD_STATE", "outcome out of range");
     }
     const now = new Date();
-    await tx.insert(resolutionProposals).values({
-      marketId: opts.marketId,
-      outcomeIdx: opts.outcomeIdx,
-      evidence: opts.evidence,
-      proposer: opts.proposer,
-      status: "posted",
-    });
+    if (opts.fromProposalId) {
+      const updated = await tx
+        .update(resolutionProposals)
+        .set({ status: "posted" })
+        .where(
+          and(
+            eq(resolutionProposals.id, opts.fromProposalId),
+            eq(resolutionProposals.marketId, opts.marketId),
+            eq(resolutionProposals.status, "draft"),
+          ),
+        )
+        .returning({ id: resolutionProposals.id });
+      if (updated.length !== 1) throw new DomainError("BAD_STATE", "draft not found or already posted");
+    } else {
+      await tx.insert(resolutionProposals).values({
+        marketId: opts.marketId,
+        outcomeIdx: opts.outcomeIdx,
+        evidence: opts.evidence,
+        proposer: opts.proposer,
+        status: "posted",
+      });
+    }
     const updated = await tx
       .update(markets)
       .set({

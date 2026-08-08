@@ -147,6 +147,54 @@ export const adminRouter = router({
     return db.select().from(disputes).orderBy(desc(disputes.createdAt)).limit(100);
   }),
 
+  /** Auto-resolver drafts awaiting human review. */
+  draftProposals: adminProcedure.query(async () => {
+    const rows = await db
+      .select({
+        id: resolutionProposals.id,
+        marketId: resolutionProposals.marketId,
+        outcomeIdx: resolutionProposals.outcomeIdx,
+        evidence: resolutionProposals.evidence,
+        proposer: resolutionProposals.proposer,
+        ts: resolutionProposals.ts,
+        title: markets.title,
+        outcomes: markets.outcomes,
+        status: markets.status,
+      })
+      .from(resolutionProposals)
+      .innerJoin(markets, eq(markets.id, resolutionProposals.marketId))
+      .where(eq(resolutionProposals.status, "draft"))
+      .orderBy(desc(resolutionProposals.ts));
+    return rows;
+  }),
+
+  /** Post a draft: lock the market if needed, then open the dispute window. */
+  postDraft: adminProcedure
+    .input(z.object({ proposalId: z.string().uuid(), disputeWindowHours: z.number().min(0).max(168).default(48) }))
+    .mutation(async ({ ctx, input }) => {
+      const [draft] = await db
+        .select()
+        .from(resolutionProposals)
+        .where(eq(resolutionProposals.id, input.proposalId));
+      if (!draft || draft.status !== "draft") throw new Error("draft not found");
+      const [market] = await db.select().from(markets).where(eq(markets.id, draft.marketId));
+      if (market?.status === "OPEN") {
+        await db
+          .update(markets)
+          .set({ closeAt: new Date() })
+          .where(and(eq(markets.id, draft.marketId), eq(markets.status, "OPEN")));
+        await lockDueMarkets();
+      }
+      await postResolution({
+        marketId: draft.marketId,
+        outcomeIdx: draft.outcomeIdx,
+        evidence: [],
+        proposer: ctx.user.handle,
+        disputeWindowHours: input.disputeWindowHours,
+        fromProposalId: draft.id,
+      });
+    }),
+
   proposals: adminProcedure
     .input(z.object({ marketId: z.string().uuid() }))
     .query(async ({ input }) => {

@@ -38,6 +38,8 @@ export interface CreateMarketInput {
   positionCapPoints?: number;
   companyId?: string;
   cohortId?: string;
+  /** Auto-resolver rule, e.g. {rule:"funding_gte", amount_usd:5e6} | {rule:"survival"}. */
+  resolverConfig?: Record<string, unknown>;
 }
 
 export function hashCriteria(criteriaMd: string): string {
@@ -79,6 +81,7 @@ export async function createMarket(input: CreateMarketInput) {
         seedPriors: priors,
         companyId: input.companyId,
         cohortId: input.cohortId,
+        resolverConfig: input.resolverConfig,
       })
       .returning();
 

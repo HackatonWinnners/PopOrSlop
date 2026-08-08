@@ -29,6 +29,20 @@
       "when": 1786191420056,
       "tag": "0003_daily_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786232204133,
+      "tag": "0004_resolver_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786232242252,
+      "tag": "0005_flowery_captain_britain",
+      "breakpoints": true
     }
   ]
 }
