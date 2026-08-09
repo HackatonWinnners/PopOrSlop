@@ -50,6 +50,20 @@
       "when": 1786232938723,
       "tag": "0006_waitlist_email_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786278206534,
+      "tag": "0007_referrals_drip",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786278347464,
+      "tag": "0008_brief_blur",
+      "breakpoints": true
     }
   ]
 }

@@ -76,7 +76,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 - **FR-2** Opening prices equal informed base-rate priors, not uniform 50/50 (no "market says 50% because nobody traded"). ✅
 - **FR-3** Trading: buy by points budget (system computes max shares) or sell held shares; server-side slippage bound; no shorting; winning share pays exactly 1 point. ✅
 - **FR-4** All accounting is a double-entry ledger against house accounts. Invariants (global zero-sum, balanced entry groups, balance-cache consistency, positions ≡ trade history) are machine-checked and surfaced in the admin console. ✅
-- **FR-5** Points economy: 1,000 pts signup grant; 25 pts daily drip; 250 pts referral; no purchase path, no cash-value prizes, no sinks in v1. ⚠️ Grant shipped; drip/referral pending.
+- **FR-5** Points economy: 1,000 pts signup grant; 25 pts daily active drip (claimed on first visit of each UTC day); 250 pts referral bonus paid to the referrer when the referee places their **first trade** (skin-in-the-game gate), denied when both accounts share a device fingerprint; no purchase path, no cash-value prizes, no sinks in v1. ✅
 
 ### 4.2 Contract taxonomy & listing policy
 
@@ -104,7 +104,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 
 ### 4.5 Integrity & anti-manipulation
 
-- **FR-21** One account per email; device fingerprint stored best-effort. ⚠️ Email uniqueness shipped; fingerprinting pending.
+- **FR-21** One account per email; best-effort client device fingerprint (hashed browser signals) stored at signup and used for referral anti-abuse. Detection is best-effort by design — the public rules are the deterrent. ✅
 - **FR-22** New accounts (< 7 days): tighter per-market exposure cap (default 250 pts, configurable; event mode raises it). ✅
 - **FR-23** I3 (funding) markets: 500-pt cost-basis cap per user per market. Event markets: 300 pts. ✅
 - **FR-24** Founder self-trading allowed **only self-flagged** (public insider badge on the trade tape). Unflagged insider trading → positions voided (forced zero-cost sale, publicly visible on the tape) + account ban. Deterrence is the public rule, not perfect detection. ✅
@@ -154,7 +154,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 | **W1** | Magic-link auth, EDGAR pipeline end-to-end, matcher + review queue, evidence tab, frozen S26 cohort (186 companies) | ✅ shipped |
 | **W2** | CH + insolvency ingesters, auto-resolver, dispute UI + council, 26 real markets listed | ✅ shipped |
 | **W3** | Batch Odds + waitlist, calibration profiles, integrity caps + enforcement tooling, snapshots, archive backfill | ✅ shipped |
-| **W4 — launch** | Editorial pass on seeded markets (replace alphabetical picks with curated ones), daily drip + referral grants, OG cards, second load test at full market count, dispute-SLA dashboard, hosting decision, HN/X soft launch timed to YC Demo Day | ◻ open |
+| **W4 — launch** | Editorial pass on seeded markets (replace alphabetical picks with curated ones), OG cards, second load test at full market count, dispute-SLA dashboard, hosting decision, HN/X soft launch timed to YC Demo Day | ◻ open (drip + referral + fingerprinting shipped 2026-08-09) |
 
 ### Launch acceptance (event-mode checklist, already rehearsed)
 - ≥ 50% of attendees who scan the QR place ≥ 1 trade
@@ -185,6 +185,6 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 |---|---|---|
 | Hybrid B2B signal: raw market price vs. blend with top-decile-forecaster average | No | Decide when the first fund call happens |
 | Founder-sponsored liquidity as a signaling product | No | Park until inbound interest |
-| Daily drip & referral: exact anti-abuse rules | Before launch | Grant amounts fixed (25 / 250 pts); tie to device fingerprint + rate limits |
+| Daily drip & referral: exact anti-abuse rules | Resolved | Shipped: drip claimed once per UTC day on visit; referral pays on the referee's first trade and is denied on a device-fingerprint match |
 | Name/domain | Before launch | Working title "PopOrSlop" |
 | Hosting (EU residency per architecture notes) | Before launch (W4) | Everything is host-agnostic; decide at deploy time |

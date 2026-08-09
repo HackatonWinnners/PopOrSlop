@@ -26,17 +26,31 @@ export async function signup(input: {
   handle: string;
   team?: string;
   email?: string;
+  /** Referrer's handle (from a /join?ref=… link). Unknown/self refs are ignored. */
+  ref?: string;
+  /** Best-effort client device fingerprint (spec §8). */
+  deviceFp?: string;
 }): Promise<{ userId: string; token: string; expiresAt: Date }> {
   if (!HANDLE_RE.test(input.handle)) {
     throw new DomainError("BAD_STATE", "handle must be 2-24 chars [a-zA-Z0-9_-]");
   }
   return db.transaction(async (tx) => {
+    let referredBy: string | null = null;
+    if (input.ref && input.ref !== input.handle) {
+      const [referrer] = await tx
+        .select({ id: users.id, isSystem: users.isSystem })
+        .from(users)
+        .where(eq(users.handle, input.ref));
+      if (referrer && !referrer.isSystem) referredBy = referrer.id;
+    }
     const [user] = await tx
       .insert(users)
       .values({
         handle: input.handle,
         team: input.team,
         email: input.email || null,
+        referredBy,
+        deviceFp: input.deviceFp?.slice(0, 64) || null,
       })
       .returning({ id: users.id })
       .catch((e: { code?: string }) => {

@@ -1,8 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { fmtProb, fmtPts, fmtShares } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
+
+/** Referral link (spec §6.2): 250 pts when the invitee places a first trade. */
+function ReferralCard() {
+  const me = trpc.me.useQuery();
+  const [copied, setCopied] = useState(false);
+  if (!me.data) return null;
+  const link = `${window.location.origin}/join?ref=${me.data.handle}`;
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded border border-zinc-800 bg-zinc-900/50 p-3 text-sm">
+      <span className="text-zinc-400">
+        Invite a forecaster — <b className="text-emerald-300">+250 pts</b> when they make their
+        first trade:
+      </span>
+      <code className="rounded bg-zinc-950 px-2 py-1 text-xs">{link}</code>
+      <button
+        onClick={() => {
+          void navigator.clipboard.writeText(link);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        }}
+        className="rounded bg-zinc-700 px-2 py-1 text-xs hover:bg-zinc-600"
+      >
+        {copied ? "copied ✓" : "copy"}
+      </button>
+    </div>
+  );
+}
 
 export default function PortfolioPage() {
   const mine = trpc.portfolio.mine.useQuery(undefined, { refetchInterval: 5000, retry: false });
@@ -53,6 +81,8 @@ export default function PortfolioPage() {
           .
         </p>
       )}
+
+      <ReferralCard />
 
       <ul className="space-y-2">
         {mine.data.positions.map((p) => {

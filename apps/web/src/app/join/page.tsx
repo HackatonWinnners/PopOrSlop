@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { deviceFingerprint } from "~/lib/fingerprint";
 
 /**
  * W0 auth-lite: handle + team → funded account. Email optional, only to keep
- * the account after the event. QR posters point here.
+ * the account after the event. QR posters point here; referral links add ?ref=.
  */
 export default function JoinPage() {
   const [handle, setHandle] = useState("");
   const [team, setTeam] = useState("");
   const [email, setEmail] = useState("");
+  const [ref, setRef] = useState<string | undefined>();
+  const [deviceFp, setDeviceFp] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("ref");
+    if (param) setRef(param);
+    void deviceFingerprint().then(setDeviceFp);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +29,13 @@ export default function JoinPage() {
     const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ handle, team: team || undefined, email: email || undefined }),
+      body: JSON.stringify({
+        handle,
+        team: team || undefined,
+        email: email || undefined,
+        ref,
+        deviceFp,
+      }),
     });
     if (res.ok) {
       // Hard navigation: reset all client caches so the session is picked up.
@@ -39,6 +54,12 @@ export default function JoinPage() {
         Pick a handle, get <b className="text-emerald-300">1,000 points</b>, start trading. Points
         have no monetary value — ever.
       </p>
+      {ref && (
+        <p className="rounded bg-zinc-900 px-3 py-2 text-xs text-zinc-400">
+          Invited by <b className="text-emerald-300">@{ref}</b> — they earn 250 pts when you place
+          your first trade.
+        </p>
+      )}
       <label className="block text-sm">
         <span className="text-zinc-400">Handle</span>
         <input

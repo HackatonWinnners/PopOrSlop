@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
 import { lmsrState, markets } from "../../db/schema";
+import { maybePayReferral } from "../../services/points";
 import { executeTrade } from "../../services/trade";
 import { authedProcedure, publicProcedure, router } from "../trpc";
 
@@ -67,7 +68,7 @@ export const tradeRouter = router({
       if (tradeRateLimited(ctx.user.id)) {
         throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "rate limited — max 30 trades/min" });
       }
-      return executeTrade({
+      const result = await executeTrade({
         userId: ctx.user.id,
         marketId: input.marketId,
         outcomeIdx: input.outcomeIdx,
@@ -76,5 +77,9 @@ export const tradeRouter = router({
         maxCost: input.maxCost,
         selfFlagged: input.selfFlagged,
       });
+      // First trade = skin in the game → referral bonus becomes payable
+      // (no-op single UPDATE for everyone else).
+      await maybePayReferral(ctx.user.id);
+      return result;
     }),
 });

@@ -8,6 +8,8 @@ const bodySchema = z.object({
   handle: z.string().min(2).max(24),
   team: z.string().max(80).optional(),
   email: z.string().email().optional().or(z.literal("")),
+  ref: z.string().max(24).optional(),
+  deviceFp: z.string().max(64).optional(),
 });
 
 // Naive per-IP rate limit — enough against QR-poster abuse at room scale.
@@ -39,6 +41,8 @@ export async function POST(req: Request) {
       handle: parsed.data.handle,
       team: parsed.data.team || undefined,
       email: parsed.data.email || undefined,
+      ref: parsed.data.ref || undefined,
+      deviceFp: parsed.data.deviceFp || undefined,
     });
     const res = NextResponse.json({ ok: true });
     res.cookies.set(SESSION_COOKIE, token, {
