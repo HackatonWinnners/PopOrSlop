@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { DomainError } from "~/server/services/errors";
 import { signup } from "~/server/services/auth";
-import { SESSION_COOKIE } from "~/server/session-cookie";
+import { SESSION_COOKIE, cookieSecure } from "~/server/session-cookie";
 
 const bodySchema = z.object({
   handle: z.string().min(2).max(24),
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieSecure(),
       expires: expiresAt,
       path: "/",
     });

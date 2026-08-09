@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, verifyMagicLink } from "~/server/services/auth";
-import { SESSION_COOKIE } from "~/server/session-cookie";
+import { SESSION_COOKIE, cookieSecure } from "~/server/session-cookie";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     res.cookies.set(SESSION_COOKIE, session.token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: cookieSecure(),
       expires: session.expiresAt,
       path: "/",
     });
