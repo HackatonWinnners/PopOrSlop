@@ -19,26 +19,26 @@ export function DraftProposals() {
   if (!drafts.data?.length) return null;
 
   return (
-    <div className="rounded border border-emerald-900 bg-emerald-950/30 p-3">
-      <p className="mb-2 text-sm font-semibold text-emerald-300">
+    <div className="rounded border border-accent bg-accent-soft p-3">
+      <p className="mb-2 text-sm font-semibold text-accent">
         Auto-resolver drafts awaiting review ({drafts.data.length})
       </p>
-      {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
+      {error && <p className="mb-2 text-xs text-neg">{error}</p>}
       <ul className="space-y-2 text-sm">
         {drafts.data.map((d) => {
           const summary = (d.evidence as { summary?: string }[])[0]?.summary;
           return (
             <li key={d.id} className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{d.title}</span>
-              <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs">
+              <span className="rounded bg-surface-2 px-1.5 py-0.5 text-xs">
                 → {d.outcomes[d.outcomeIdx]}
               </span>
-              {summary && <span className="truncate text-xs text-zinc-400">{summary}</span>}
+              {summary && <span className="truncate text-xs text-muted">{summary}</span>}
               <span className="ml-auto flex gap-1.5">
                 <button
                   onClick={() => post.mutate({ proposalId: d.id, disputeWindowHours: 48 })}
                   disabled={post.isPending}
-                  className="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold"
+                  className="rounded bg-accent px-2 py-1 text-xs font-semibold"
                 >
                   Post (48h window)
                 </button>

@@ -29,7 +29,7 @@ export function StartupsAdmin() {
     onError: (e) => setError(e.message),
   });
 
-  const input = "mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
+  const input = "mt-1 w-full rounded border border-line-strong bg-surface px-3 py-2 text-sm";
   return (
     <form
       onSubmit={(e) => {
@@ -47,7 +47,7 @@ export function StartupsAdmin() {
       className="max-w-xl space-y-3"
     >
       <label className="block text-sm">
-        <span className="text-zinc-400">Startup</span>
+        <span className="text-muted">Startup</span>
         <select value={companyId} onChange={(e) => setCompanyId(e.target.value)} required className={input}>
           <option value="" disabled>
             pick an unlisted company…
@@ -60,7 +60,7 @@ export function StartupsAdmin() {
         </select>
       </label>
       <label className="block text-sm">
-        <span className="text-zinc-400">
+        <span className="text-muted">
           Listing payment (USD, received off-platform — sets launch price: $1k → 1 pt/token)
         </span>
         <input
@@ -71,27 +71,27 @@ export function StartupsAdmin() {
           className={input}
         />
       </label>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-faint">
         Launch price will be {Math.max(1, paymentUsd / 1000).toFixed(1)} pts/token; startup receives
         500 tokens.
       </p>
       <label className="block text-sm">
-        <span className="text-zinc-400">Logo URL (optional)</span>
+        <span className="text-muted">Logo URL (optional)</span>
         <input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://…" className={input} />
       </label>
       <label className="block text-sm">
-        <span className="text-zinc-400">Website (optional)</span>
+        <span className="text-muted">Website (optional)</span>
         <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" className={input} />
       </label>
       <label className="block text-sm">
-        <span className="text-zinc-400">Description (optional)</span>
+        <span className="text-muted">Description (optional)</span>
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={input} />
       </label>
-      {error && <p className="text-sm text-red-400">{error}</p>}
-      {result && <p className="text-sm text-emerald-400">{result}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
+      {result && <p className="text-sm text-accent">{result}</p>}
       <button
         disabled={list.isPending || !companyId}
-        className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+        className="rounded bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
       >
         {list.isPending ? "…" : "List startup & launch token"}
       </button>

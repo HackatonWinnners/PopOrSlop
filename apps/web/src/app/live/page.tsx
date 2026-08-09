@@ -31,12 +31,12 @@ export default function LivePage() {
   const market = showLeaderboard ? null : flagships[panel]!;
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-zinc-950 p-8 text-zinc-100">
+    <div className="fixed inset-0 flex flex-col bg-bg p-8 text-ink">
       <header className="flex items-baseline justify-between">
-        <h1 className="text-3xl font-black tracking-tight text-emerald-400">PopOrSlop</h1>
-        <p className="text-xl text-zinc-400">
+        <h1 className="text-3xl font-black tracking-tight text-accent">PopOrSlop</h1>
+        <p className="text-xl text-muted">
           {stats.data ? `${stats.data.traders} traders · ${stats.data.trades} trades` : ""}
-          <span className="ml-6 text-emerald-300">scan the QR → join → trade</span>
+          <span className="ml-6 text-accent">scan the QR → join → trade</span>
         </p>
       </header>
 
@@ -47,11 +47,11 @@ export default function LivePage() {
             <ol className="space-y-3">
               {(board.data?.allTime ?? []).slice(0, 8).map((r, i) => (
                 <li key={r.handle} className="flex items-center gap-4 text-3xl">
-                  <span className="w-10 text-right font-mono text-zinc-500">{i + 1}</span>
+                  <span className="w-10 text-right font-mono text-faint">{i + 1}</span>
                   <span className="font-semibold">@{r.handle}</span>
-                  {r.team && <span className="rounded bg-zinc-800 px-2 text-xl text-zinc-400">{r.team}</span>}
+                  {r.team && <span className="rounded bg-surface-2 px-2 text-xl text-muted">{r.team}</span>}
                   <span
-                    className={`ml-auto font-mono ${r.pnl >= 0n ? "text-emerald-400" : "text-red-400"}`}
+                    className={`ml-auto font-mono ${r.pnl >= 0n ? "text-pos" : "text-neg"}`}
                   >
                     {r.pnl >= 0n ? "+" : ""}
                     {fmtPts(r.pnl)}
@@ -71,13 +71,13 @@ export default function LivePage() {
                 .map(({ o, p, i }) => (
                   <div key={i} className="flex items-center gap-4 text-3xl">
                     <span className="w-2/5 truncate font-semibold">{o}</span>
-                    <div className="h-8 flex-1 overflow-hidden rounded bg-zinc-800">
+                    <div className="h-8 flex-1 overflow-hidden rounded bg-surface-2">
                       <div
-                        className={`h-full ${market.resolvedOutcome === i ? "bg-emerald-400" : "bg-emerald-600"}`}
+                        className={`h-full ${market.resolvedOutcome === i ? "bg-accent" : "bg-accent"}`}
                         style={{ width: `${Math.max(1, p / 10_000)}%` }}
                       />
                     </div>
-                    <span className="w-24 text-right font-mono text-emerald-300">
+                    <span className="w-24 text-right font-mono text-accent">
                       {fmtProb(p, 0)}
                     </span>
                   </div>
@@ -87,13 +87,13 @@ export default function LivePage() {
         ) : null}
       </div>
 
-      <footer className="h-12 overflow-hidden border-t border-zinc-800 pt-2">
-        <div className="flex gap-8 whitespace-nowrap text-lg text-zinc-400">
+      <footer className="h-12 overflow-hidden border-t border-line pt-2">
+        <div className="flex gap-8 whitespace-nowrap text-lg text-muted">
           {(ticker.data ?? []).map((t) => (
             <span key={String(t.id)}>
-              <span className="text-zinc-600">{fmtTime(t.ts)}</span> @{t.handle}{" "}
-              {t.selfFlagged && <span className="text-amber-400">⚑</span>}
-              <span className={t.deltaShares > 0n ? "text-emerald-400" : "text-red-400"}>
+              <span className="text-faint">{fmtTime(t.ts)}</span> @{t.handle}{" "}
+              {t.selfFlagged && <span className="text-warn">⚑</span>}
+              <span className={t.deltaShares > 0n ? "text-pos" : "text-neg"}>
                 {" "}
                 {t.deltaShares > 0n ? "▲" : "▼"} {fmtShares(t.deltaShares < 0n ? -t.deltaShares : t.deltaShares)}
               </span>{" "}

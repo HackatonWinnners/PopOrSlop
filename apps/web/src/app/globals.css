@@ -1,9 +1,193 @@
 @import "tailwindcss";
 
-:root {
+/**
+ * Two themes from the design bundle, switched on <html data-theme>:
+ *   broadsheet (default) — warm paper, ink blue, rounded, Space Grotesk
+ *   terminal              — near-black, phosphor green, SHARP corners, IBM Plex
+ * Radius and font family are theme tokens too, not just colour.
+ */
+:root,
+:root[data-theme="broadsheet"] {
+  --bg: #f6f4ef;
+  --surface: #fdfcf9;
+  --surface-2: #f1eee6;
+  --surface-3: #eceae3;
+  --line: #e2dfd6;
+  --line-strong: #d8d4c9;
+  --ink: #16181d;
+  --ink-2: #4a4d55;
+  --muted: #6b6e76;
+  --faint: #9a9c9f;
+  --accent: #1f4fd8;
+  --accent-ink: #ffffff;
+  --accent-soft: #e8edfc;
+  --pos: #147a46;
+  --pos-bg: #e3f2e8;
+  --neg: #c2372e;
+  --neg-bg: #fbeae8;
+  --warn: #9a6b00;
+  --warn-bg: #fbf3dd;
+  /* Categorical series, fixed order, validated against this surface
+     (lightness band, chroma, CVD separation, normal-vision floor). */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shell: 1080px;
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-fragment-mono), ui-monospace, monospace;
+  --label-size: 11px;
+  --label-spacing: 0.08em;
+}
+
+:root[data-theme="terminal"] {
+  --bg: #0b0e11;
+  --surface: #0e1216;
+  --surface-2: #12171d;
+  --surface-3: #171c22;
+  --line: #1c2128;
+  --line-strong: #2a313a;
+  --ink: #e6e8eb;
+  --ink-2: #b8bdc4;
+  --muted: #8b929b;
+  --faint: #5b626b;
+  --accent: #3fe081;
+  --accent-ink: #0b0e11;
+  --accent-soft: #12331f;
+  --pos: #3fe081;
+  --pos-bg: #12331f;
+  --neg: #f0655a;
+  --neg-bg: #3a1713;
+  --warn: #e8b23a;
+  --warn-bg: #33270f;
+  /* Same four hues re-stepped for the dark surface, not an automatic flip. */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --radius: 0px;
+  --radius-lg: 0px;
+  --shell: 1120px;
+  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+  --label-size: 10px;
+  --label-spacing: 0.14em;
+}
+
+/* `inline` keeps utilities pointing at the vars, so a data-theme swap restyles
+   everything without regenerating classes. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-pos: var(--pos);
+  --color-pos-bg: var(--pos-bg);
+  --color-neg: var(--neg);
+  --color-neg-bg: var(--neg-bg);
+  --color-warn: var(--warn);
+  --color-warn-bg: var(--warn-bg);
+  --radius-card: var(--radius-lg);
+  --radius-control: var(--radius);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+html {
+  color-scheme: light;
+}
+html[data-theme="terminal"] {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-zinc-950 text-zinc-100 antialiased;
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+input,
+textarea,
+select,
+button {
+  font-family: inherit;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--faint);
+}
+
+/* Numeric readouts stay monospace and tabular so prices don't jitter on tick. */
+.tnum {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Small caps-y section label used across both designs. */
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-spacing);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Wordmark differs per theme: "PopOrSlop" on paper, "POP/SLOP" in terminal. */
+.wordmark-term {
+  display: none;
+}
+:root[data-theme="terminal"] .wordmark-term {
+  display: inline;
+}
+:root[data-theme="terminal"] .wordmark-paper {
+  display: none;
+}
+:root[data-theme="terminal"] .nav-link {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Terminal shouts its page titles and numbers its sections; broadsheet doesn't. */
+.sec-num {
+  display: none;
+}
+:root[data-theme="terminal"] .sec-num {
+  display: inline;
+}
+:root[data-theme="terminal"] .page-title {
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  font-size: 44px;
+  line-height: 1.05;
+}
+
+@keyframes tick {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }

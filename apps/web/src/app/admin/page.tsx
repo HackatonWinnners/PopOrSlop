@@ -23,19 +23,19 @@ export default function AdminPage() {
     "markets" | "create" | "import" | "oracle" | "disputes" | "quests" | "startups"
   >("markets");
 
-  if (me.data === null) return <p className="py-8 text-zinc-500">Not signed in.</p>;
-  if (me.data && !me.data.isAdmin) return <p className="py-8 text-zinc-500">Admins only.</p>;
+  if (me.data === null) return <p className="py-8 text-faint">Not signed in.</p>;
+  if (me.data && !me.data.isAdmin) return <p className="py-8 text-faint">Admins only.</p>;
 
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between py-2">
-        <h1 className="text-xl font-bold">Admin console</h1>
+        <h1 className="page-title text-3xl font-bold tracking-tight">Admin console</h1>
         {invariants.data && (
           <span
             className={`rounded px-2 py-1 text-xs font-semibold ${
               invariants.data.length === 0
-                ? "bg-emerald-950 text-emerald-400"
-                : "bg-red-950 text-red-400"
+                ? "bg-accent-soft text-accent"
+                : "bg-red-950 text-neg"
             }`}
             title={invariants.data.map((v) => `${v.invariant}: ${v.detail}`).join("\n")}
           >
@@ -46,7 +46,7 @@ export default function AdminPage() {
         )}
       </header>
 
-      <div className="flex gap-4 border-b border-zinc-800 text-sm">
+      <div className="flex gap-4 border-b border-line text-sm">
         {(
           [
             ["markets", "Markets"],
@@ -61,7 +61,7 @@ export default function AdminPage() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`pb-2 ${tab === key ? "border-b-2 border-emerald-400 font-semibold" : "text-zinc-500"}`}
+            className={`pb-2 ${tab === key ? "border-b-2 border-accent font-semibold" : "text-faint"}`}
           >
             {label}
           </button>

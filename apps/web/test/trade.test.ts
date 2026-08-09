@@ -176,5 +176,7 @@ describe("trade transaction", () => {
     const [state] = await db.select().from(lmsrState).where(eq(lmsrState.marketId, market.id));
     expect(state!.version).toBe(executed);
     await expectClean();
-  }, 120_000);
+    // 500 sequential round trips; generous because the dev/test DB is remote
+    // (SSH tunnel to the VPS), so each trade pays real network latency.
+  }, 420_000);
 });

@@ -62,8 +62,8 @@ export function TradePanel({
 
   if (!me.data) {
     return (
-      <p className="rounded border border-zinc-800 p-4 text-sm text-zinc-400">
-        <a href="/join" className="text-emerald-400 underline">
+      <p className="rounded border border-line p-4 text-sm text-muted">
+        <a href="/join" className="text-accent underline">
           Join
         </a>{" "}
         to trade — 1,000 free points.
@@ -95,22 +95,22 @@ export function TradePanel({
   };
 
   return (
-    <div className="space-y-3 rounded border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="space-y-3 rounded border border-line bg-surface p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm">
-          <span className="text-zinc-400">Trading:</span>{" "}
+          <span className="text-muted">Trading:</span>{" "}
           <b>{market.outcomes[outcomeIdx]}</b>
         </p>
-        <div className="flex overflow-hidden rounded border border-zinc-700 text-sm">
+        <div className="flex overflow-hidden rounded border border-line-strong text-sm">
           <button
             onClick={() => setSide("buy")}
-            className={`px-3 py-1 ${side === "buy" ? "bg-emerald-500 font-semibold text-zinc-950" : ""}`}
+            className={`px-3 py-1 ${side === "buy" ? "bg-accent font-semibold text-accent-ink" : ""}`}
           >
             Buy
           </button>
           <button
             onClick={() => setSide("sell")}
-            className={`px-3 py-1 ${side === "sell" ? "bg-red-500 font-semibold text-zinc-950" : ""}`}
+            className={`px-3 py-1 ${side === "sell" ? "bg-neg font-semibold text-accent-ink" : ""}`}
           >
             Sell
           </button>
@@ -125,7 +125,7 @@ export function TradePanel({
                 key={b}
                 onClick={() => setBudgetPts(b)}
                 className={`rounded px-2.5 py-1 text-sm ${
-                  budgetPts === b ? "bg-emerald-500 font-semibold text-zinc-950" : "bg-zinc-800"
+                  budgetPts === b ? "bg-accent font-semibold text-accent-ink" : "bg-surface-2"
                 }`}
               >
                 {b}
@@ -136,11 +136,11 @@ export function TradePanel({
               min={1}
               value={budgetPts}
               onChange={(e) => setBudgetPts(Number(e.target.value))}
-              className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-sm"
+              className="w-24 rounded border border-line-strong bg-surface px-2 py-1 text-sm"
             />
-            <span className="text-sm text-zinc-500">pts</span>
+            <span className="text-sm text-faint">pts</span>
           </div>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-muted">
             {quote.data
               ? `≈ ${fmtShares(quote.data.deltaShares)} shares (pays ${fmtShares(quote.data.deltaShares)} pts if right) for ${fmtPts(quote.data.cost)} pts`
               : "…"}
@@ -155,25 +155,25 @@ export function TradePanel({
               step="0.5"
               value={sellShares}
               onChange={(e) => setSellShares(Number(e.target.value))}
-              className="w-28 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+              className="w-28 rounded border border-line-strong bg-surface px-2 py-1"
             />
-            <span className="text-zinc-500">shares</span>
+            <span className="text-faint">shares</span>
             {held !== undefined && held > 0n && (
               <button
                 onClick={() => setSellShares(Number(held / 1000n) / 1000)}
-                className="rounded bg-zinc-800 px-2 py-1 text-xs"
+                className="rounded bg-surface-2 px-2 py-1 text-xs"
               >
                 all ({fmtShares(held)})
               </button>
             )}
           </div>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-muted">
             {quote.data ? `receive ≈ ${fmtPts(-quote.data.cost)} pts` : "…"}
           </p>
         </>
       )}
 
-      <label className="flex items-center gap-2 text-xs text-zinc-400">
+      <label className="flex items-center gap-2 text-xs text-muted">
         <input
           type="checkbox"
           checked={selfFlagged}
@@ -183,7 +183,7 @@ export function TradePanel({
       </label>
 
       {market.positionCap !== null && (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-faint">
           Position cap: {fmtPts(market.positionCap, 0)} pts cost basis per trader on this market.
         </p>
       )}
@@ -191,15 +191,15 @@ export function TradePanel({
       <button
         onClick={submit}
         disabled={execute.isPending}
-        className={`w-full rounded py-2 font-semibold text-zinc-950 disabled:opacity-50 ${
-          side === "buy" ? "bg-emerald-500 hover:bg-emerald-400" : "bg-red-500 hover:bg-red-400"
+        className={`w-full rounded py-2 font-semibold text-accent-ink disabled:opacity-50 ${
+          side === "buy" ? "bg-accent hover:opacity-90" : "bg-neg hover:opacity-90"
         }`}
       >
         {execute.isPending ? "…" : side === "buy" ? "Buy" : "Sell"}
       </button>
 
       {message && (
-        <p className={`text-sm ${message.kind === "ok" ? "text-emerald-400" : "text-red-400"}`}>
+        <p className={`text-sm ${message.kind === "ok" ? "text-pos" : "text-neg"}`}>
           {message.text}
         </p>
       )}

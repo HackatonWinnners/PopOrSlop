@@ -28,7 +28,7 @@ export function ImportTeams({ onDone }: { onDone: () => void }) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const input = "mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
+  const input = "mt-1 w-full rounded border border-line-strong bg-surface px-3 py-2 text-sm";
   return (
     <form
       onSubmit={(e) => {
@@ -40,16 +40,16 @@ export function ImportTeams({ onDone }: { onDone: () => void }) {
     >
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">
-          <span className="text-zinc-400">Title</span>
+          <span className="text-muted">Title</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} required className={input} />
         </label>
         <label className="block text-sm">
-          <span className="text-zinc-400">Slug</span>
+          <span className="text-muted">Slug</span>
           <input value={slug} onChange={(e) => setSlug(e.target.value)} required className={input} />
         </label>
       </div>
       <label className="block text-sm">
-        <span className="text-zinc-400">
+        <span className="text-muted">
           Teams — paste CSV or one per line ({teams.length} parsed)
         </span>
         <textarea
@@ -62,7 +62,7 @@ export function ImportTeams({ onDone }: { onDone: () => void }) {
         />
       </label>
       <label className="block text-sm">
-        <span className="text-zinc-400">Trading closes at (judging start)</span>
+        <span className="text-muted">Trading closes at (judging start)</span>
         <input
           type="datetime-local"
           value={closeAt}
@@ -71,13 +71,13 @@ export function ImportTeams({ onDone }: { onDone: () => void }) {
           className={input}
         />
       </label>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-faint">
         Creates a flagship categorical market: b = 1000, uniform prior, 300-pt position cap.
       </p>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
       <button
         disabled={importMut.isPending || teams.length < 2}
-        className="rounded bg-emerald-500 px-4 py-2 font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+        className="rounded bg-accent px-4 py-2 font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
       >
         {importMut.isPending ? "…" : `List winner market (${teams.length} teams)`}
       </button>

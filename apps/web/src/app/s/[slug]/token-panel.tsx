@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Button, Card, inputClass } from "~/components/ui";
 import { fmtPts } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
 
-/** Bonding-curve token: live price, chart, buy/sell in points. */
+/**
+ * Bonding-curve token: price + chart on the left, buy/sell docked right
+ * (matches the design's split panel; stacks on mobile).
+ */
 export function TokenPanel({
   companyId,
   token,
@@ -68,116 +72,145 @@ export function TokenPanel({
   };
 
   return (
-    <section className="rounded-lg border border-emerald-900 bg-zinc-900/50 p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm text-zinc-400">Token price</p>
-        <p className="font-mono text-2xl text-emerald-300">{fmtPts(token.priceMicro)} pts</p>
-      </div>
-      <p className="text-xs text-zinc-600">
-        bonding curve — price rises as supply grows · {fmtPts(token.supply, 0)} tokens outstanding
-      </p>
-
-      {chartData.length > 1 && (
-        <div className="mt-3 h-32 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis dataKey="t" tick={{ fontSize: 10, fill: "#71717a" }} interval="preserveStartEnd" />
-              <YAxis tick={{ fontSize: 10, fill: "#71717a" }} width={44} domain={["auto", "auto"]} />
-              <Tooltip
-                contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", fontSize: 12 }}
-                formatter={(v: number) => `${v.toFixed(2)} pts`}
-              />
-              <Line dataKey="price" stroke="#34d399" dot={false} strokeWidth={2} isAnimationActive={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {me.data ? (
-        <div className="mt-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-400">
-              You hold:{" "}
-              <b className="text-zinc-200">{fmtPts(myPos.data?.tokens ?? 0n)} tokens</b>
+    <Card className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="label">Token price</p>
+            <p className="tnum text-4xl text-accent">
+              {fmtPts(token.priceMicro)} <span className="text-base text-faint">pts</span>
             </p>
-            <div className="flex overflow-hidden rounded border border-zinc-700 text-sm">
+          </div>
+          <div className="text-right">
+            <p className="label">Supply outstanding</p>
+            <p className="tnum text-lg">{fmtPts(token.supply, 0)}</p>
+          </div>
+        </div>
+
+        {chartData.length > 1 && (
+          <div className="mt-4 h-36 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <XAxis
+                  dataKey="t"
+                  tick={{ fontSize: 10, fill: "var(--faint)" }}
+                  interval="preserveStartEnd"
+                  stroke="var(--line)"
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "var(--faint)" }}
+                  width={48}
+                  domain={["auto", "auto"]}
+                  stroke="var(--line)"
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--line)",
+                    borderRadius: "var(--radius)",
+                    fontSize: 12,
+                    color: "var(--ink)",
+                  }}
+                  formatter={(v: number) => `${v.toFixed(2)} pts`}
+                />
+                <Line
+                  dataKey="price"
+                  stroke="var(--accent)"
+                  dot={false}
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-faint">
+          Price rises along a bonding curve as supply grows — every buy mints, every sell burns.
+        </p>
+      </div>
+
+      <div className="border-t border-line p-5 lg:border-t-0 lg:border-l">
+        {me.data ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 overflow-hidden rounded-[var(--radius-control)] border border-line-strong text-sm">
               <button
                 onClick={() => setSide("buy")}
-                className={`px-3 py-1 ${side === "buy" ? "bg-emerald-500 font-semibold text-zinc-950" : ""}`}
+                className={`py-1.5 ${side === "buy" ? "bg-accent font-semibold text-accent-ink" : "text-muted"}`}
               >
                 Buy
               </button>
               <button
                 onClick={() => setSide("sell")}
-                className={`px-3 py-1 ${side === "sell" ? "bg-red-500 font-semibold text-zinc-950" : ""}`}
+                className={`py-1.5 ${side === "sell" ? "bg-neg font-semibold text-white" : "text-muted"}`}
               >
                 Sell
               </button>
             </div>
-          </div>
 
-          {side === "buy" ? (
-            <div className="flex items-center gap-2 text-sm">
-              <input
-                type="number"
-                min={1}
-                value={budgetPts}
-                onChange={(e) => setBudgetPts(Number(e.target.value))}
-                className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-              />
-              <span className="text-zinc-500">pts →</span>
-              <span className="text-zinc-300">
-                {quote.data ? `≈ ${fmtPts(quote.data.deltaTokens)} tokens` : "…"}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 text-sm">
-              <input
-                type="number"
-                min={0}
-                step="0.5"
-                value={sellTokens}
-                onChange={(e) => setSellTokens(Number(e.target.value))}
-                className="w-24 rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
-              />
-              <span className="text-zinc-500">tokens →</span>
-              <span className="text-zinc-300">
-                {quote.data ? `receive ≈ ${fmtPts(-quote.data.cost)} pts` : "…"}
-              </span>
-              {myPos.data && myPos.data.tokens > 0n && (
-                <button
-                  onClick={() => setSellTokens(Number(myPos.data!.tokens / 1000n) / 1000)}
-                  className="rounded bg-zinc-800 px-2 py-0.5 text-xs"
-                >
-                  all
-                </button>
-              )}
-            </div>
-          )}
+            {side === "buy" ? (
+              <div className="flex items-center gap-2 text-sm">
+                <input
+                  type="number"
+                  min={1}
+                  value={budgetPts}
+                  onChange={(e) => setBudgetPts(Number(e.target.value))}
+                  className={`${inputClass} w-24`}
+                />
+                <span className="tnum text-xs text-muted">
+                  pts → {quote.data ? `≈ ${fmtPts(quote.data.deltaTokens)} tokens` : "…"}
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm">
+                <input
+                  type="number"
+                  min={0}
+                  step="0.5"
+                  value={sellTokens}
+                  onChange={(e) => setSellTokens(Number(e.target.value))}
+                  className={`${inputClass} w-24`}
+                />
+                <span className="tnum text-xs text-muted">
+                  → {quote.data ? `≈ ${fmtPts(-quote.data.cost)} pts` : "…"}
+                </span>
+                {myPos.data && myPos.data.tokens > 0n && (
+                  <button
+                    onClick={() => setSellTokens(Number(myPos.data!.tokens / 1000n) / 1000)}
+                    className="label rounded-[var(--radius-control)] bg-surface-2 px-2 py-1"
+                  >
+                    all
+                  </button>
+                )}
+              </div>
+            )}
 
-          <button
-            onClick={submit}
-            disabled={trade.isPending}
-            className={`w-full rounded py-2 font-semibold text-zinc-950 disabled:opacity-50 ${
-              side === "buy" ? "bg-emerald-500 hover:bg-emerald-400" : "bg-red-500 hover:bg-red-400"
-            }`}
-          >
-            {trade.isPending ? "…" : side === "buy" ? "Buy tokens" : "Sell tokens"}
-          </button>
-          {message && (
-            <p className={`text-sm ${message.kind === "ok" ? "text-emerald-400" : "text-red-400"}`}>
-              {message.text}
+            <p className="text-xs text-faint">
+              You hold <b className="tnum text-ink">{fmtPts(myPos.data?.tokens ?? 0n)}</b> tokens
             </p>
-          )}
-        </div>
-      ) : (
-        <p className="mt-3 text-sm text-zinc-400">
-          <a href="/join" className="text-emerald-400 underline">
-            Join
-          </a>{" "}
-          to trade this token — 1,000 free points.
-        </p>
-      )}
-    </section>
+
+            <Button
+              onClick={submit}
+              disabled={trade.isPending}
+              variant={side === "buy" ? "primary" : "danger"}
+              className="w-full"
+            >
+              {trade.isPending ? "…" : side === "buy" ? "Buy tokens" : "Sell tokens"}
+            </Button>
+            {message && (
+              <p className={`text-xs ${message.kind === "ok" ? "text-pos" : "text-neg"}`}>
+                {message.text}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-muted">
+            <a href="/join" className="text-accent underline">
+              Join
+            </a>{" "}
+            to trade this token — 1,000 free points.
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }

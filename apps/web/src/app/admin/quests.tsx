@@ -16,49 +16,49 @@ export function QuestsAdmin() {
     <div className="space-y-4">
       <button
         onClick={() => setShowCreate((v) => !v)}
-        className="rounded bg-zinc-700 px-3 py-1.5 text-sm font-semibold hover:bg-zinc-600"
+        className="rounded bg-surface-3 px-3 py-1.5 text-sm font-semibold hover:bg-surface-3"
       >
         {showCreate ? "Hide quest form" : "+ New quest"}
       </button>
       {showCreate && <CreateQuestForm onDone={() => setShowCreate(false)} />}
 
-      <h3 className="text-sm font-semibold text-zinc-400">Submissions</h3>
-      {!submissions.data?.length && <p className="text-sm text-zinc-500">None yet.</p>}
+      <h3 className="text-sm font-semibold text-muted">Submissions</h3>
+      {!submissions.data?.length && <p className="text-sm text-faint">None yet.</p>}
       <ul className="space-y-2 text-sm">
         {submissions.data?.map((s) => (
-          <li key={s.id} className="rounded border border-zinc-800 bg-zinc-900/50 p-3">
+          <li key={s.id} className="rounded border border-line bg-surface p-3">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`rounded px-1.5 py-0.5 text-xs ${
                   s.status === "pending"
-                    ? "bg-amber-950 text-amber-400"
+                    ? "bg-warn-bg text-warn"
                     : s.status === "approved"
-                      ? "bg-emerald-950 text-emerald-400"
-                      : "bg-zinc-800 text-zinc-500"
+                      ? "bg-accent-soft text-accent"
+                      : "bg-surface-2 text-faint"
                 }`}
               >
                 {s.status}
               </span>
               <span className="font-medium">@{s.handle}</span>
-              <span className="text-zinc-400">{s.questTitle}</span>
-              <span className="ml-auto font-mono text-xs text-zinc-500">
+              <span className="text-muted">{s.questTitle}</span>
+              <span className="ml-auto font-mono text-xs text-faint">
                 +{fmtPts(s.reward, 0)} pts · {fmtTime(s.createdAt)}
               </span>
             </div>
-            {s.proof && <p className="mt-1 text-zinc-300">“{s.proof}”</p>}
+            {s.proof && <p className="mt-1 text-ink-2">“{s.proof}”</p>}
             {s.status === "pending" && (
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={() => review.mutate({ completionId: s.id, approve: true })}
                   disabled={review.isPending}
-                  className="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold"
+                  className="rounded bg-accent px-2 py-1 text-xs font-semibold"
                 >
                   Approve & pay
                 </button>
                 <button
                   onClick={() => review.mutate({ completionId: s.id, approve: false })}
                   disabled={review.isPending}
-                  className="rounded bg-zinc-700 px-2 py-1 text-xs"
+                  className="rounded bg-surface-3 px-2 py-1 text-xs"
                 >
                   Reject
                 </button>
@@ -91,7 +91,7 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
     onError: (e) => setError(e.message),
   });
 
-  const input = "mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
+  const input = "mt-1 w-full rounded border border-line-strong bg-surface px-3 py-2 text-sm";
   return (
     <form
       onSubmit={(e) => {
@@ -108,20 +108,20 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
           rewardPoints: reward,
         });
       }}
-      className="space-y-3 rounded border border-zinc-800 bg-zinc-900/50 p-4"
+      className="space-y-3 rounded border border-line bg-surface p-4"
     >
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">
-          <span className="text-zinc-400">Title</span>
+          <span className="text-muted">Title</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} required className={input} />
         </label>
         <label className="block text-sm">
-          <span className="text-zinc-400">Slug (auto if empty)</span>
+          <span className="text-muted">Slug (auto if empty)</span>
           <input value={slug} onChange={(e) => setSlug(e.target.value)} className={input} />
         </label>
       </div>
       <label className="block text-sm">
-        <span className="text-zinc-400">Description (what to do, what counts)</span>
+        <span className="text-muted">Description (what to do, what counts)</span>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -132,7 +132,7 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
       </label>
       <div className="grid grid-cols-3 gap-3">
         <label className="block text-sm">
-          <span className="text-zinc-400">Kind</span>
+          <span className="text-muted">Kind</span>
           <select value={kind} onChange={(e) => setKind(e.target.value as never)} className={input}>
             <option value="manual">manual — proof + review</option>
             <option value="code">code — redemption code</option>
@@ -141,7 +141,7 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
         </label>
         {kind === "auto" && (
           <label className="block text-sm">
-            <span className="text-zinc-400">Rule</span>
+            <span className="text-muted">Rule</span>
             <select value={rule} onChange={(e) => setRule(e.target.value as never)} className={input}>
               <option value="first_trade">placed a trade</option>
               <option value="email_set">added an email</option>
@@ -151,12 +151,12 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
         )}
         {kind === "code" && (
           <label className="block text-sm">
-            <span className="text-zinc-400">Code (share with the partner)</span>
+            <span className="text-muted">Code (share with the partner)</span>
             <input value={codeValue} onChange={(e) => setCodeValue(e.target.value)} required className={input} />
           </label>
         )}
         <label className="block text-sm">
-          <span className="text-zinc-400">Reward (pts)</span>
+          <span className="text-muted">Reward (pts)</span>
           <input
             type="number"
             min={1}
@@ -167,13 +167,13 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
         </label>
       </div>
       <label className="block text-sm">
-        <span className="text-zinc-400">External URL (optional)</span>
+        <span className="text-muted">External URL (optional)</span>
         <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className={input} />
       </label>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
       <button
         disabled={create.isPending}
-        className="rounded bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+        className="rounded bg-accent px-4 py-2 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
       >
         {create.isPending ? "…" : "Create quest"}
       </button>

@@ -13,7 +13,7 @@ export default defineConfig({
       // Tests create fresh users; the 7-day cap is exercised explicitly, not ambiently.
       NEW_ACCOUNT_CAP_PTS: "1000000",
     },
-    testTimeout: 30_000,
+    testTimeout: 60_000,
     hookTimeout: 30_000,
   },
   resolve: {

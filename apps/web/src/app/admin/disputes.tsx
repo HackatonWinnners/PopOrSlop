@@ -23,36 +23,36 @@ export function Disputes() {
   const marketById = new Map((markets.data ?? []).map((m) => [m.id, m]));
 
   if (!disputes.data?.length) {
-    return <p className="py-6 text-sm text-zinc-500">No disputes filed.</p>;
+    return <p className="py-6 text-sm text-faint">No disputes filed.</p>;
   }
 
   return (
     <div className="space-y-2">
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
       {disputes.data.map((d) => {
         const market = marketById.get(d.marketId);
         return (
-          <div key={d.id} className="rounded border border-zinc-800 bg-zinc-900/50 p-3 text-sm">
+          <div key={d.id} className="rounded border border-line bg-surface p-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`rounded px-1.5 py-0.5 text-xs ${
                   d.status === "open"
-                    ? "bg-amber-950 text-amber-400"
+                    ? "bg-warn-bg text-warn"
                     : d.status === "overturned"
-                      ? "bg-emerald-950 text-emerald-400"
-                      : "bg-zinc-800 text-zinc-400"
+                      ? "bg-accent-soft text-accent"
+                      : "bg-surface-2 text-muted"
                 }`}
               >
                 {d.status}
               </span>
               <span className="font-semibold">{market?.title ?? d.marketId}</span>
-              <span className="ml-auto text-xs text-zinc-500">
+              <span className="ml-auto text-xs text-faint">
                 staked {fmtPts(d.stake, 0)} pts · {fmtTime(d.createdAt)}
               </span>
             </div>
-            <p className="mt-1 text-zinc-300">“{d.reason}”</p>
+            <p className="mt-1 text-ink-2">“{d.reason}”</p>
             {market && market.resolvedOutcome !== null && (
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-faint">
                 proposed outcome: <b>{market.outcomes[market.resolvedOutcome]}</b>
               </p>
             )}
@@ -61,15 +61,15 @@ export function Disputes() {
                 <button
                   onClick={() => resolve.mutate({ disputeId: d.id, upheld: true })}
                   disabled={resolve.isPending}
-                  className="rounded bg-zinc-700 px-2 py-1 text-xs font-semibold"
+                  className="rounded bg-surface-3 px-2 py-1 text-xs font-semibold"
                 >
                   Uphold original (slash stake)
                 </button>
-                <span className="text-xs text-zinc-500">or overturn to</span>
+                <span className="text-xs text-faint">or overturn to</span>
                 <select
                   value={correctedIdx[d.id] ?? ""}
                   onChange={(e) => setCorrectedIdx({ ...correctedIdx, [d.id]: Number(e.target.value) })}
-                  className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs"
+                  className="rounded border border-line-strong bg-surface px-2 py-1 text-xs"
                 >
                   <option value="" disabled>
                     corrected outcome…
@@ -89,7 +89,7 @@ export function Disputes() {
                     })
                   }
                   disabled={resolve.isPending || correctedIdx[d.id] === undefined}
-                  className="rounded bg-emerald-600 px-2 py-1 text-xs font-semibold disabled:opacity-50"
+                  className="rounded bg-accent px-2 py-1 text-xs font-semibold disabled:opacity-50"
                 >
                   Overturn (return stake + bounty)
                 </button>

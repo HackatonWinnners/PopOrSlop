@@ -19,7 +19,7 @@ export function EvidenceTab({ marketId, outcomes }: { marketId: string; outcomes
 
   if (!proposals.data?.length) {
     return (
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-faint">
         No resolution proposed yet. When one is posted, its evidence bundle appears here.
       </p>
     );
@@ -28,27 +28,27 @@ export function EvidenceTab({ marketId, outcomes }: { marketId: string; outcomes
   return (
     <div className="space-y-3">
       {proposals.data.map((p) => (
-        <div key={p.id} className="rounded border border-zinc-800 bg-zinc-900/50 p-3 text-sm">
+        <div key={p.id} className="rounded border border-line bg-surface p-3 text-sm">
           <div className="mb-2 flex items-center gap-2">
-            <span className="rounded bg-emerald-950 px-2 py-0.5 text-emerald-400">
+            <span className="rounded bg-accent-soft px-2 py-0.5 text-accent">
               → {outcomes[p.outcomeIdx] ?? `#${p.outcomeIdx}`}
             </span>
-            <span className="text-zinc-500">
+            <span className="text-faint">
               proposed by {p.proposer} at {fmtTime(p.ts)}
             </span>
             {p.status === "superseded" && (
-              <span className="rounded bg-zinc-800 px-1.5 text-xs text-zinc-500">superseded</span>
+              <span className="rounded bg-surface-2 px-1.5 text-xs text-faint">superseded</span>
             )}
           </div>
           <ul className="space-y-2">
             {(p.evidence as EvidenceItem[]).map((e, i) => (
-              <li key={i} className="rounded bg-zinc-950/60 p-2">
-                <p className="text-zinc-300">{e.summary}</p>
-                <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-zinc-500">
-                  <span className="rounded bg-zinc-800 px-1">{e.source}</span>
+              <li key={i} className="rounded bg-surface-2 p-2">
+                <p className="text-ink-2">{e.summary}</p>
+                <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-faint">
+                  <span className="rounded bg-surface-2 px-1">{e.source}</span>
                   {e.externalRef && <span className="font-mono">{e.externalRef}</span>}
                   {e.url && (
-                    <a href={e.url} target="_blank" rel="noreferrer" className="text-emerald-400 underline">
+                    <a href={e.url} target="_blank" rel="noreferrer" className="text-accent underline">
                       source
                     </a>
                   )}
@@ -57,7 +57,7 @@ export function EvidenceTab({ marketId, outcomes }: { marketId: string; outcomes
                       href={e.archivedUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-emerald-400 underline"
+                      className="text-accent underline"
                     >
                       archived copy
                     </a>

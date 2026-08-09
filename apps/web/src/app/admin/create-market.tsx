@@ -59,20 +59,20 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
     });
   };
 
-  const input = "mt-1 w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm";
+  const input = "mt-1 w-full rounded border border-line-strong bg-surface px-3 py-2 text-sm";
   return (
     <form onSubmit={submit} className="space-y-3">
       <label className="block text-sm">
-        <span className="text-zinc-400">Title</span>
+        <span className="text-muted">Title</span>
         <input value={title} onChange={(e) => setTitle(e.target.value)} required className={input} />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">
-          <span className="text-zinc-400">Slug (auto if empty)</span>
+          <span className="text-muted">Slug (auto if empty)</span>
           <input value={slug} onChange={(e) => setSlug(e.target.value)} className={input} />
         </label>
         <label className="block text-sm">
-          <span className="text-zinc-400">Type</span>
+          <span className="text-muted">Type</span>
           <select value={type} onChange={(e) => setType(e.target.value as never)} className={input}>
             {TYPES.map((t) => (
               <option key={t}>{t}</option>
@@ -81,7 +81,7 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
         </label>
       </div>
       <label className="block text-sm">
-        <span className="text-zinc-400">Outcomes (one per line)</span>
+        <span className="text-muted">Outcomes (one per line)</span>
         <textarea
           value={outcomesRaw}
           onChange={(e) => setOutcomesRaw(e.target.value)}
@@ -91,7 +91,7 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
         />
       </label>
       <label className="block text-sm">
-        <span className="text-zinc-400">Resolution criteria (frozen + hashed at listing)</span>
+        <span className="text-muted">Resolution criteria (frozen + hashed at listing)</span>
         <textarea
           value={criteria}
           onChange={(e) => setCriteria(e.target.value)}
@@ -103,7 +103,7 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
       </label>
       <div className="grid grid-cols-3 gap-3">
         <label className="block text-sm">
-          <span className="text-zinc-400">b (liquidity)</span>
+          <span className="text-muted">b (liquidity)</span>
           <select
             value={bPoints}
             onChange={(e) => setBPoints(Number(e.target.value) as never)}
@@ -115,7 +115,7 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
           </select>
         </label>
         <label className="block text-sm">
-          <span className="text-zinc-400">Closes at</span>
+          <span className="text-muted">Closes at</span>
           <input
             type="datetime-local"
             value={closeAt}
@@ -125,7 +125,7 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
           />
         </label>
         <label className="block text-sm">
-          <span className="text-zinc-400">Position cap (pts, empty = none)</span>
+          <span className="text-muted">Position cap (pts, empty = none)</span>
           <input
             type="number"
             value={capPoints}
@@ -135,7 +135,7 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
         </label>
       </div>
       <label className="block text-sm">
-        <span className="text-zinc-400">Priors (optional, space-separated, normalized — else uniform)</span>
+        <span className="text-muted">Priors (optional, space-separated, normalized — else uniform)</span>
         <input
           value={priorsRaw}
           onChange={(e) => setPriorsRaw(e.target.value)}
@@ -143,10 +143,10 @@ export function CreateMarketForm({ onDone }: { onDone: () => void }) {
           className={input}
         />
       </label>
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-neg">{error}</p>}
       <button
         disabled={create.isPending}
-        className="rounded bg-emerald-500 px-4 py-2 font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+        className="rounded bg-accent px-4 py-2 font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
       >
         {create.isPending ? "…" : "List market"}
       </button>
