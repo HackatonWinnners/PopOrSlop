@@ -55,10 +55,18 @@ async function main() {
       })
       .returning({ id: cohorts.id });
 
+    const taken = new Set<string>();
     for (const c of list) {
       const domain = c.website?.replace(/^https?:\/\//, "").replace(/\/.*$/, "") || undefined;
+      // Profile slug: slugified name, deduped within this run (DB unique index
+      // is the backstop across runs).
+      const base = c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "startup";
+      let slug = base;
+      for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+      taken.add(slug);
       await tx.insert(companies).values({
         name: c.name,
+        slug,
         jurisdiction: c.all_locations?.includes("Germany") ? "DE" : c.all_locations?.includes("United Kingdom") ? "UK" : "US",
         cohortId: cohort!.id,
         extIds: { yc_slug: c.slug, domain },

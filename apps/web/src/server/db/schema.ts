@@ -70,6 +70,8 @@ export const ledgerReason = pgEnum("ledger_reason", [
   "SEED_SUBSIDY",
   "RESOLUTION_SWEEP",
   "QUEST_REWARD",
+  "TOKEN_TRADE",
+  "TOKEN_LISTING_SUBSIDY",
   "ADMIN_ADJUST",
 ]);
 
@@ -123,14 +125,71 @@ export const companies = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
+    slug: text("slug").unique(),
     jurisdiction: text("jurisdiction"),
     cohortId: uuid("cohort_id").references(() => cohorts.id),
     extIds: jsonb("ext_ids").notNull().default({}),
+    // Profile (startup-centered surface)
+    logoUrl: text("logo_url"),
+    description: text("description"),
+    links: jsonb("links").notNull().default({}),
+    // Listing: real money is an OFF-ledger fee recorded here; it only sets
+    // the token launch price. Everything on-platform stays play-money points.
+    listedAt: timestamp("listed_at", { withTimezone: true }),
+    listingPaymentUsd: bigint("listing_payment_usd", { mode: "bigint" }),
+    accountUserId: uuid("account_user_id").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("companies_cik_idx").on(sql`(${t.extIds} ->> 'cik')`),
     index("companies_ch_idx").on(sql`(${t.extIds} ->> 'ch')`),
+  ],
+);
+
+/** Linear bonding curve per listed startup: price(s) = p0 + slope · s. */
+export const tokenState = pgTable("token_state", {
+  companyId: uuid("company_id")
+    .primaryKey()
+    .references(() => companies.id),
+  supply: bigint("supply", { mode: "bigint" }).notNull().default(sql`0`),
+  p0: bigint("p0", { mode: "bigint" }).notNull(),
+  slope: bigint("slope", { mode: "bigint" }).notNull(),
+  version: integer("version").notNull().default(0),
+});
+
+export const tokenTrades = pgTable(
+  "token_trades",
+  {
+    id: bigserial("id", { mode: "bigint" }).primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id),
+    deltaTokens: bigint("delta_tokens", { mode: "bigint" }).notNull(),
+    cost: bigint("cost", { mode: "bigint" }).notNull(),
+    priceAfter: bigint("price_after", { mode: "bigint" }).notNull(),
+    ts: timestamp("ts", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("token_trades_tape").on(t.companyId, t.ts.desc())],
+);
+
+export const tokenPositions = pgTable(
+  "token_positions",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id),
+    tokens: bigint("tokens", { mode: "bigint" }).notNull().default(sql`0`),
+    costBasis: bigint("cost_basis", { mode: "bigint" }).notNull().default(sql`0`),
+  },
+  (t) => [
+    primaryKey({ columns: [t.userId, t.companyId] }),
+    index("token_positions_company").on(t.companyId),
   ],
 );
 

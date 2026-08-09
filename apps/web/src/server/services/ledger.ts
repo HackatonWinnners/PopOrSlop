@@ -8,6 +8,7 @@ export const SYSTEM = {
   houseTreasury: "00000000-0000-0000-0000-000000000001",
   ammPool: "00000000-0000-0000-0000-000000000002",
   disputeEscrow: "00000000-0000-0000-0000-000000000003",
+  tokenPool: "00000000-0000-0000-0000-000000000004",
 } as const;
 
 export type LedgerReason =
@@ -24,6 +25,8 @@ export type LedgerReason =
   | "SEED_SUBSIDY"
   | "RESOLUTION_SWEEP"
   | "QUEST_REWARD"
+  | "TOKEN_TRADE"
+  | "TOKEN_LISTING_SUBSIDY"
   | "ADMIN_ADJUST";
 
 export interface LedgerEntry {

@@ -8,7 +8,8 @@ export async function resetDb(): Promise<void> {
   await db.execute(sql`
     TRUNCATE trades, positions, ledger, lmsr_state, resolution_proposals, disputes,
              odds_snapshots, event_company_matches, oracle_events, sessions,
-             magic_link_tokens, waitlist_signups, quest_completions, quests
+             magic_link_tokens, waitlist_signups, quest_completions, quests,
+             token_trades, token_positions, token_state
              RESTART IDENTITY CASCADE
   `);
   await db.execute(sql`DELETE FROM markets`);

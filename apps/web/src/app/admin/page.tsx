@@ -9,6 +9,7 @@ import { DraftProposals } from "./draft-proposals";
 import { MarketRow } from "./market-row";
 import { OracleEvents } from "./oracle-events";
 import { QuestsAdmin } from "./quests";
+import { StartupsAdmin } from "./startups";
 
 export default function AdminPage() {
   const me = trpc.me.useQuery();
@@ -19,7 +20,7 @@ export default function AdminPage() {
     enabled: !!me.data?.isAdmin,
   });
   const [tab, setTab] = useState<
-    "markets" | "create" | "import" | "oracle" | "disputes" | "quests"
+    "markets" | "create" | "import" | "oracle" | "disputes" | "quests" | "startups"
   >("markets");
 
   if (me.data === null) return <p className="py-8 text-zinc-500">Not signed in.</p>;
@@ -54,6 +55,7 @@ export default function AdminPage() {
             ["oracle", "Oracle events"],
             ["disputes", "Disputes"],
             ["quests", "Quests"],
+            ["startups", "Startups"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -71,6 +73,7 @@ export default function AdminPage() {
       {tab === "oracle" && <OracleEvents />}
       {tab === "disputes" && <Disputes />}
       {tab === "quests" && <QuestsAdmin />}
+      {tab === "startups" && <StartupsAdmin />}
       {tab === "markets" && (
         <div className="space-y-2">
           <DraftProposals />

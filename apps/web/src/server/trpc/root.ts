@@ -4,6 +4,7 @@ import { adminRouter, disputeRouter } from "./routers/admin";
 import { marketRouter } from "./routers/market";
 import { portfolioRouter } from "./routers/portfolio";
 import { questRouter } from "./routers/quest";
+import { startupRouter } from "./routers/startup";
 import { tradeRouter } from "./routers/trade";
 import { waitlistRouter } from "./routers/waitlist";
 import { publicProcedure, router } from "./trpc";
@@ -16,6 +17,7 @@ export const appRouter = router({
   dispute: disputeRouter,
   waitlist: waitlistRouter,
   quest: questRouter,
+  startup: startupRouter,
   me: publicProcedure.query(async ({ ctx }) => {
     if (!ctx.user) return null;
     // Daily active drip (spec §6.2): opening the app with a live session

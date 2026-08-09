@@ -15,6 +15,9 @@ export function Nav() {
         <Link href="/" className="font-bold tracking-tight text-emerald-400">
           PopOrSlop
         </Link>
+        <Link href="/markets" className="text-zinc-400 hover:text-zinc-100">
+          Markets
+        </Link>
         <Link href="/portfolio" className="text-zinc-400 hover:text-zinc-100">
           Portfolio
         </Link>

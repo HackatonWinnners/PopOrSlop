@@ -1,80 +1,72 @@
 "use client";
 
 import Link from "next/link";
-import { fmtProb } from "~/lib/format";
+import { fmtPts } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
 
-const STATUS_LABEL: Record<string, string> = {
-  OPEN: "open",
-  LOCKED: "locked",
-  DISPUTE_WINDOW: "resolving",
-  ESCALATED: "disputed",
-  RESOLVED: "resolved",
-  NA_REFUNDED: "N/A refund",
-};
+/** Home: the startup-centered surface. Listed startups (tradable tokens) first. */
+export default function StartupsPage() {
+  const startups = trpc.startup.list.useQuery(undefined, { refetchInterval: 10_000 });
 
-export default function HomePage() {
-  const markets = trpc.market.list.useQuery(undefined, { refetchInterval: 5000 });
+  const listed = (startups.data ?? []).filter((s) => s.listed);
+  const rest = (startups.data ?? []).filter((s) => !s.listed);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       <header className="py-2">
-        <h1 className="text-xl font-bold">Markets</h1>
+        <h1 className="text-xl font-bold">Startups</h1>
         <p className="text-sm text-zinc-400">
-          Play-money odds on real outcomes. Every contract resolves against a public source of truth.
+          Every startup has a profile, a tradable token, and prediction markets that resolve
+          against public records. Points only — no monetary value, ever.
         </p>
       </header>
-      {markets.data?.length === 0 && (
-        <p className="rounded border border-zinc-800 p-6 text-center text-zinc-500">
-          No markets listed yet.
-        </p>
-      )}
-      {markets.data?.map((m) => {
-        const top = m.pricesMicro
-          ? m.outcomes
-              .map((o, i) => ({ o, p: m.pricesMicro![i]! }))
-              .sort((a, b) => b.p - a.p)
-              .slice(0, 3)
-          : [];
-        return (
-          <Link
-            key={m.id}
-            href={`/m/${m.slug}`}
-            className="block rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-600"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="font-semibold">{m.title}</h2>
-              <span
-                className={`shrink-0 rounded px-2 py-0.5 text-xs ${
-                  m.status === "OPEN"
-                    ? "bg-emerald-950 text-emerald-400"
-                    : m.status === "RESOLVED"
-                      ? "bg-zinc-800 text-zinc-400"
-                      : "bg-amber-950 text-amber-400"
-                }`}
+
+      {listed.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-emerald-400">Listed — token live</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {listed.map((s) => (
+              <Link
+                key={s.id}
+                href={`/s/${s.slug}`}
+                className="rounded-lg border border-emerald-900 bg-zinc-900/50 p-3 hover:border-emerald-600"
               >
-                {STATUS_LABEL[m.status] ?? m.status}
-              </span>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2 text-sm">
-              {m.status === "RESOLVED" && m.resolvedOutcome !== null ? (
-                <span className="text-zinc-300">
-                  → <b>{m.outcomes[m.resolvedOutcome]}</b>
-                </span>
-              ) : (
-                top.map(({ o, p }) => (
-                  <span key={o} className="rounded bg-zinc-800 px-2 py-0.5">
-                    {o} <b className="text-emerald-300">{fmtProb(p, 0)}</b>
-                  </span>
-                ))
-              )}
-              {m.outcomes.length > 3 && m.status !== "RESOLVED" && (
-                <span className="text-zinc-500">+{m.outcomes.length - 3} more</span>
-              )}
-            </div>
-          </Link>
-        );
-      })}
+                <div className="flex items-center gap-2">
+                  {s.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.logoUrl} alt="" className="h-8 w-8 rounded bg-zinc-800 object-cover" />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-zinc-800 text-sm font-bold">
+                      {s.name[0]}
+                    </div>
+                  )}
+                  <span className="truncate font-semibold">{s.name}</span>
+                </div>
+                <p className="mt-2 font-mono text-sm text-emerald-300">
+                  {fmtPts(s.priceMicro)} pts / token
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-zinc-400">
+          Tracked — markets only ({rest.length})
+        </h2>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {rest.map((s) => (
+            <Link
+              key={s.id}
+              href={`/s/${s.slug}`}
+              className="truncate rounded border border-zinc-800 bg-zinc-900/40 px-2.5 py-1.5 text-sm hover:border-zinc-600"
+            >
+              {s.name}
+            </Link>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

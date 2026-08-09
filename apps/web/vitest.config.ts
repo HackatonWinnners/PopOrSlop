@@ -8,7 +8,8 @@ export default defineConfig({
     fileParallelism: false,
     env: {
       TEST: "1",
-      TEST_DATABASE_URL: "postgres://poporslop:poporslop@localhost:5433/poporslop_test",
+      TEST_DATABASE_URL:
+        "postgres://postgres:VNXIlCJXWvVkcBaFI89DW0K5fzUkLsPeRfnANROxbmK3IbuZ7RQQIbo6Dy5sEOAJ@localhost:15432/poporslop_test",
       // Tests create fresh users; the 7-day cap is exercised explicitly, not ambiently.
       NEW_ACCOUNT_CAP_PTS: "1000000",
     },
