@@ -77,6 +77,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 - **FR-3** Trading: buy by points budget (system computes max shares) or sell held shares; server-side slippage bound; no shorting; winning share pays exactly 1 point. ✅
 - **FR-4** All accounting is a double-entry ledger against house accounts. Invariants (global zero-sum, balanced entry groups, balance-cache consistency, positions ≡ trade history) are machine-checked and surfaced in the admin console. ✅
 - **FR-5** Points economy: 1,000 pts signup grant; 25 pts daily active drip (claimed on first visit of each UTC day); 250 pts referral bonus paid to the referrer when the referee places their **first trade** (skin-in-the-game gate), denied when both accounts share a device fingerprint; no purchase path, no cash-value prizes, no sinks in v1. ✅
+- **FR-5a** Quests: admin-curated tasks that pay point rewards, with three verification kinds — **auto** (internal fact checks: first trade, email added, traded 3 markets), **code** (redemption code shown by an external app/partner after the task; hashed at rest, case-insensitive, wrong attempts don't burn the claim), **manual** (user submits proof, admin approves/rejects in the console; one shot per quest). Rewards are balanced treasury→user ledger groups, exactly-once per (quest, user). ✅
 
 ### 4.2 Contract taxonomy & listing policy
 

@@ -8,6 +8,7 @@ import { Disputes } from "./disputes";
 import { DraftProposals } from "./draft-proposals";
 import { MarketRow } from "./market-row";
 import { OracleEvents } from "./oracle-events";
+import { QuestsAdmin } from "./quests";
 
 export default function AdminPage() {
   const me = trpc.me.useQuery();
@@ -17,7 +18,9 @@ export default function AdminPage() {
     retry: false,
     enabled: !!me.data?.isAdmin,
   });
-  const [tab, setTab] = useState<"markets" | "create" | "import" | "oracle" | "disputes">("markets");
+  const [tab, setTab] = useState<
+    "markets" | "create" | "import" | "oracle" | "disputes" | "quests"
+  >("markets");
 
   if (me.data === null) return <p className="py-8 text-zinc-500">Not signed in.</p>;
   if (me.data && !me.data.isAdmin) return <p className="py-8 text-zinc-500">Admins only.</p>;
@@ -50,6 +53,7 @@ export default function AdminPage() {
             ["import", "Team import"],
             ["oracle", "Oracle events"],
             ["disputes", "Disputes"],
+            ["quests", "Quests"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -66,6 +70,7 @@ export default function AdminPage() {
       {tab === "import" && <ImportTeams onDone={() => setTab("markets")} />}
       {tab === "oracle" && <OracleEvents />}
       {tab === "disputes" && <Disputes />}
+      {tab === "quests" && <QuestsAdmin />}
       {tab === "markets" && (
         <div className="space-y-2">
           <DraftProposals />

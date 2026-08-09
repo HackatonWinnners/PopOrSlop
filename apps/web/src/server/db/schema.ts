@@ -69,6 +69,7 @@ export const ledgerReason = pgEnum("ledger_reason", [
   "DISPUTE_SLASH",
   "SEED_SUBSIDY",
   "RESOLUTION_SWEEP",
+  "QUEST_REWARD",
   "ADMIN_ADJUST",
 ]);
 
@@ -324,6 +325,41 @@ export const waitlistSignups = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("waitlist_email_unique").on(t.email)],
+);
+
+export const quests = pgTable("quests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  url: text("url"),
+  /** auto = internal fact check; code = redemption code; manual = proof + admin review. */
+  kind: text("kind").notNull(),
+  /** auto quests: which internal rule verifies completion (first_trade | email_set | traded_3_markets). */
+  rule: text("rule"),
+  codeHash: text("code_hash"),
+  reward: bigint("reward", { mode: "bigint" }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const questCompletions = pgTable(
+  "quest_completions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    questId: uuid("quest_id")
+      .notNull()
+      .references(() => quests.id),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    status: text("status").notNull().default("pending"),
+    proof: text("proof"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (t) => [unique("quest_completions_once").on(t.questId, t.userId)],
 );
 
 // P2 architectural insurance — schema reserved, unused in v1.

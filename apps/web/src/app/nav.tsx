@@ -21,6 +21,9 @@ export function Nav() {
         <Link href="/leaderboard" className="text-zinc-400 hover:text-zinc-100">
           Leaders
         </Link>
+        <Link href="/quests" className="text-zinc-400 hover:text-zinc-100">
+          Quests
+        </Link>
         {me.data?.isAdmin && (
           <Link href="/admin" className="text-amber-400 hover:text-amber-300">
             Admin

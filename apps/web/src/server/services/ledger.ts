@@ -23,6 +23,7 @@ export type LedgerReason =
   | "DISPUTE_SLASH"
   | "SEED_SUBSIDY"
   | "RESOLUTION_SWEEP"
+  | "QUEST_REWARD"
   | "ADMIN_ADJUST";
 
 export interface LedgerEntry {
