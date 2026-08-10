@@ -6,7 +6,7 @@ export type Theme = "broadsheet" | "terminal";
 
 /** Reads/writes the same key the pre-paint bootstrap script in layout.tsx uses. */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("broadsheet");
+  const [theme, setTheme] = useState<Theme>("terminal");
 
   useEffect(() => {
     const current = document.documentElement.dataset.theme;

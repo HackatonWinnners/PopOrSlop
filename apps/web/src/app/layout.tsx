@@ -33,13 +33,13 @@ export const metadata: Metadata = {
 };
 
 /** Applies the saved theme before first paint so there's no flash of the wrong one. */
-const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem('pos-theme');document.documentElement.dataset.theme=(t==='terminal'||t==='broadsheet')?t:'broadsheet'}catch(e){document.documentElement.dataset.theme='broadsheet'}})()`;
+const THEME_BOOTSTRAP = `(function(){try{var t=localStorage.getItem('pos-theme');document.documentElement.dataset.theme=(t==='terminal'||t==='broadsheet')?t:'terminal'}catch(e){document.documentElement.dataset.theme='terminal'}})()`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      data-theme="broadsheet"
+      data-theme="terminal"
       className={`${spaceGrotesk.variable} ${fragmentMono.variable} ${plexSans.variable} ${plexMono.variable}`}
       suppressHydrationWarning
     >
