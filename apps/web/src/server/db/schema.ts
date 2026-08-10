@@ -227,7 +227,7 @@ export const markets = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    check("outcomes_card", sql`cardinality(${t.outcomes}) BETWEEN 2 AND 64`),
+    check("outcomes_card", sql`cardinality(${t.outcomes}) BETWEEN 2 AND 256`),
     check("i_class_range", sql`${t.iClass} BETWEEN 0 AND 3`),
     check("m_class_range", sql`${t.mClass} BETWEEN 0 AND 2`),
     index("markets_lock_idx").on(t.status, t.closeAt),

@@ -53,7 +53,9 @@ export function hashCriteria(criteriaMd: string): string {
  */
 export async function createMarket(input: CreateMarketInput) {
   const n = input.outcomes.length;
-  if (n < 2 || n > 64) throw new Error(`outcomes must be 2..64, got ${n}`);
+  // 256 is a UI sanity bound, not an engine one: LMSR is fine at any n, but
+  // the subsidy grows as b·ln(n) and the outcome list stops being scannable.
+  if (n < 2 || n > 256) throw new Error(`outcomes must be 2..256, got ${n}`);
   if (input.priors && input.priors.length !== n) {
     throw new Error("priors length must match outcomes");
   }

@@ -6,6 +6,7 @@ import { fmtProb } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
 import { DisputeBanner } from "./dispute-banner";
 import { EvidenceTab } from "./evidence-tab";
+import { OutcomePicker } from "./outcome-picker";
 import { PriceChart } from "./price-chart";
 import { TradePanel } from "./trade-panel";
 import { TradeTape } from "./trade-tape";
@@ -41,25 +42,14 @@ export default function MarketPage({ params }: { params: Promise<{ slug: string 
 
       <DisputeBanner market={m} />
 
-      {/* Outcome grid — tap to select for trading */}
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-        {m.outcomes.map((o, i) => (
-          <button
-            key={i}
-            onClick={() => setSelected(i)}
-            className={`flex items-center justify-between rounded-[var(--radius-control)] border px-3 py-2 text-left text-sm ${
-              selected === i
-                ? "border-accent bg-accent-soft"
-                : "border-line bg-surface hover:border-line-strong"
-            } ${m.resolvedOutcome === i ? "ring-1 ring-accent" : ""}`}
-          >
-            <span className="truncate">{o}</span>
-            <b className="tnum ml-2 shrink-0 text-accent">
-              {m.pricesMicro ? fmtProb(m.pricesMicro[i], 1) : "—"}
-            </b>
-          </button>
-        ))}
-      </div>
+      {/* Tap to select for trading */}
+      <OutcomePicker
+        outcomes={m.outcomes}
+        pricesMicro={m.pricesMicro}
+        selected={selected}
+        onSelect={setSelected}
+        resolvedOutcome={m.resolvedOutcome}
+      />
 
       <PriceChart marketId={m.id} outcomes={m.outcomes} />
 
