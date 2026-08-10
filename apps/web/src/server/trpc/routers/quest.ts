@@ -2,12 +2,21 @@ import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
 import { questCompletions, quests, users } from "../../db/schema";
-import { claimQuest, hashQuestCode, reviewQuestSubmission } from "../../services/quests";
+import {
+  claimQuest,
+  hashQuestCode,
+  reviewQuestSubmission,
+  sweepTimedQuestApprovals,
+} from "../../services/quests";
 import { adminProcedure, authedProcedure, publicProcedure, router } from "../trpc";
 
 export const questRouter = router({
   /** Active quests, annotated with the caller's completion status. */
   list: publicProcedure.query(async ({ ctx }) => {
+    // Timed claims come due while nobody is looking; settle the caller's own
+    // before rendering, so the page never shows "pending" on something that
+    // has already earned. Same pattern as the daily drip in `me`.
+    if (ctx.user) await sweepTimedQuestApprovals(ctx.user.id);
     const rows = await db
       .select()
       .from(quests)
@@ -27,6 +36,7 @@ export const questRouter = router({
       description: q.description,
       url: q.url,
       kind: q.kind as "auto" | "code" | "manual",
+      autoApproveAfterS: q.autoApproveAfterS,
       reward: q.reward,
       myStatus: (mine.get(q.id) ?? null) as "pending" | "approved" | "rejected" | null,
     }));
@@ -59,6 +69,8 @@ export const questRouter = router({
         kind: z.enum(["auto", "code", "manual"]),
         rule: z.enum(["first_trade", "email_verified", "traded_3_markets"]).optional(),
         code: z.string().min(4).max(120).optional(),
+        /** manual only: self-approve this many seconds after the claim. */
+        autoApproveAfterS: z.number().int().min(0).max(86_400).optional(),
         rewardPoints: z.number().int().min(1).max(100_000),
       }),
     )
@@ -73,6 +85,7 @@ export const questRouter = router({
         kind: input.kind,
         rule: input.kind === "auto" ? input.rule : null,
         codeHash: input.kind === "code" ? hashQuestCode(input.code!) : null,
+        autoApproveAfterS: input.kind === "manual" ? (input.autoApproveAfterS ?? null) : null,
         reward: BigInt(input.rewardPoints) * 1_000_000n,
       });
     }),

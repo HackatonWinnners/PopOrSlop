@@ -86,7 +86,10 @@ export async function claimQuest(opts: {
       }
       status = "approved";
     } else if (quest.kind === "manual") {
-      if (!opts.proof || opts.proof.trim().length < 5) {
+      // Timed quests take the claim at face value anyway, so demanding a
+      // written proof would be theatre — and friction on the one path we
+      // actively want people to walk.
+      if (quest.autoApproveAfterS === null && (!opts.proof || opts.proof.trim().length < 5)) {
         throw new DomainError("BAD_STATE", "please describe how you completed the quest (≥ 5 chars)");
       }
       status = "pending";
@@ -105,6 +108,36 @@ export async function claimQuest(opts: {
 
     if (status === "approved") await grantReward(tx, quest.id, opts.userId, quest.reward);
     return { status };
+  });
+}
+
+/**
+ * Approve pending claims on timed quests whose delay has elapsed.
+ *
+ * Idempotent and safe to run concurrently: the UPDATE is guarded on
+ * `status = 'pending'` and only rows it actually flipped come back, so a
+ * reward is granted exactly once even if the cron and a page load race.
+ *
+ * `userId` scopes the sweep to one person — the cheap path for a page load.
+ * Omit it for the cron, which sweeps everyone.
+ */
+export async function sweepTimedQuestApprovals(userId?: string): Promise<number> {
+  return db.transaction(async (tx) => {
+    const due = await tx.execute<{ id: string; quest_id: string; user_id: string; reward: string }>(sql`
+      UPDATE quest_completions c
+         SET status = 'approved', reviewed_at = now()
+        FROM quests q
+       WHERE q.id = c.quest_id
+         AND c.status = 'pending'
+         AND q.auto_approve_after_s IS NOT NULL
+         AND c.created_at + make_interval(secs => q.auto_approve_after_s) <= now()
+         ${userId ? sql`AND c.user_id = ${userId}` : sql``}
+      RETURNING c.id, c.quest_id, c.user_id, q.reward::text AS reward
+    `);
+    for (const row of due.rows) {
+      await grantReward(tx, row.quest_id, row.user_id, BigInt(row.reward));
+    }
+    return due.rows.length;
   });
 }
 

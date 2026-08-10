@@ -1,0 +1,1 @@
+ALTER TABLE "quests" ADD COLUMN "auto_approve_after_s" integer;

@@ -4,7 +4,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "../src/server/db/client";
 import { quests, users } from "../src/server/db/schema";
 import { checkInvariants } from "../src/server/services/invariants";
-import { claimQuest, hashQuestCode, reviewQuestSubmission } from "../src/server/services/quests";
+import {
+  claimQuest,
+  hashQuestCode,
+  reviewQuestSubmission,
+  sweepTimedQuestApprovals,
+} from "../src/server/services/quests";
 import { executeTrade } from "../src/server/services/trade";
 import { makeMarket, makeUser, resetDb } from "./helpers";
 
@@ -109,5 +114,50 @@ describe("quests", () => {
     await expect(
       claimQuest({ userId, questSlug: "old-quest", proof: "hello there" }),
     ).rejects.toThrow(/not found or inactive/);
+  });
+});
+
+describe("timed quests (partner apps with no postback yet)", () => {
+  beforeEach(resetDb);
+
+  it("stays pending until the delay elapses, then pays exactly once", async () => {
+    const userId = await makeUser();
+    await makeQuest({
+      slug: "facestic-sticker",
+      kind: "manual",
+      autoApproveAfterS: 300,
+      reward: pts(500),
+    });
+    const before = await balance(userId);
+
+    // No proof required — a timer can't read one anyway.
+    expect(await claimQuest({ userId, questSlug: "facestic-sticker" })).toEqual({
+      status: "pending",
+    });
+    expect(await balance(userId)).toBe(before);
+
+    // Not due yet.
+    expect(await sweepTimedQuestApprovals()).toBe(0);
+    expect(await balance(userId)).toBe(before);
+
+    // Backdate the claim past the delay rather than waiting five minutes.
+    await db.execute(sql`UPDATE quest_completions SET created_at = now() - interval '6 minutes'`);
+
+    expect(await sweepTimedQuestApprovals()).toBe(1);
+    expect(await balance(userId)).toBe(before + pts(500));
+
+    // Re-running must not pay again — the guard is status='pending'.
+    expect(await sweepTimedQuestApprovals()).toBe(0);
+    expect(await balance(userId)).toBe(before + pts(500));
+    await expectClean();
+  });
+
+  it("leaves untimed manual submissions for a human", async () => {
+    const userId = await makeUser();
+    await makeQuest({ slug: "spread-the-word", kind: "manual", reward: pts(250) });
+    await claimQuest({ userId, questSlug: "spread-the-word", proof: "https://x.com/post/1" });
+    await db.execute(sql`UPDATE quest_completions SET created_at = now() - interval '30 days'`);
+    expect(await sweepTimedQuestApprovals()).toBe(0);
+    await expectClean();
   });
 });

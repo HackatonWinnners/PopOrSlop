@@ -409,6 +409,13 @@ export const quests = pgTable("quests", {
   /** auto quests: which internal rule verifies completion (first_trade | email_verified | traded_3_markets). */
   rule: text("rule"),
   codeHash: text("code_hash"),
+  /**
+   * manual quests: seconds after submission at which the claim self-approves,
+   * with no admin looking at it. A stopgap for partners we can't verify yet —
+   * set it back to null the moment a real postback exists, because until then
+   * the "review" is a timer and anyone who clicks gets paid.
+   */
+  autoApproveAfterS: integer("auto_approve_after_s"),
   reward: bigint("reward", { mode: "bigint" }).notNull(),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

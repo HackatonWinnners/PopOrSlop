@@ -46,6 +46,7 @@ function QuestCard({
     description: string;
     url: string | null;
     kind: "auto" | "code" | "manual";
+    autoApproveAfterS: number | null;
     reward: bigint;
     myStatus: "pending" | "approved" | "rejected" | null;
   };
@@ -63,6 +64,15 @@ function QuestCard({
     },
     onError: (e) => setError(e.message),
   });
+
+  // A timed quest takes the claim on trust, so asking for proof would be
+  // theatre — and the button should promise the wait, not an admin.
+  const timed = quest.kind === "manual" && quest.autoApproveAfterS !== null;
+  const waitLabel = timed
+    ? quest.autoApproveAfterS! >= 60
+      ? `${Math.round(quest.autoApproveAfterS! / 60)} min`
+      : `${quest.autoApproveAfterS!}s`
+    : null;
 
   const submit = () => {
     setError(null);
@@ -101,7 +111,11 @@ function QuestCard({
             <p className="text-sm font-semibold text-accent">✓ completed — points paid</p>
           )}
           {quest.myStatus === "pending" && (
-            <p className="text-sm text-warn">⧗ submitted — awaiting admin review</p>
+            <p className="text-sm text-warn">
+              {timed
+                ? `⧗ claimed — clears automatically about ${waitLabel} after you claimed. Come back and it'll be paid.`
+                : "⧗ submitted — awaiting admin review"}
+            </p>
           )}
           {quest.myStatus === "rejected" && (
             <p className="text-sm text-faint">✗ submission rejected</p>
@@ -116,7 +130,7 @@ function QuestCard({
                   className="rounded border border-line-strong bg-surface px-3 py-1.5 text-sm"
                 />
               )}
-              {quest.kind === "manual" && (
+              {quest.kind === "manual" && !timed && (
                 <input
                   value={proof}
                   onChange={(e) => setProof(e.target.value)}
@@ -129,9 +143,18 @@ function QuestCard({
                 disabled={claim.isPending}
                 className="rounded bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
               >
-                {quest.kind === "auto" ? "Claim" : quest.kind === "code" ? "Redeem" : "Submit proof"}
+                {quest.kind === "auto" || timed
+                  ? "Claim"
+                  : quest.kind === "code"
+                    ? "Redeem"
+                    : "Submit proof"}
               </button>
             </div>
+          )}
+          {quest.myStatus === null && timed && (
+            <p className="mt-1 text-xs text-faint">
+              Clears about {waitLabel} after you claim — no proof needed.
+            </p>
           )}
           {error && <p className="mt-1 text-sm text-neg">{error}</p>}
         </div>
