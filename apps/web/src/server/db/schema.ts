@@ -17,6 +17,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -95,7 +96,13 @@ export const users = pgTable(
     lastDripOn: date("last_drip_on"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [check("points_balance_nonneg", sql`${t.pointsBalance} >= 0 OR ${t.isSystem}`)],
+  (t) => [
+    check("points_balance_nonneg", sql`${t.pointsBalance} >= 0 OR ${t.isSystem}`),
+    // Addresses are lowercased on write, but the plain unique on `email` would
+    // still let "A@x.com" and "a@x.com" coexist if any path ever forgot to
+    // normalise — and a lookup would then resolve to whichever it found first.
+    uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`),
+  ],
 );
 
 export const sessions = pgTable("sessions", {
