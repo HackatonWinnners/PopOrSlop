@@ -19,7 +19,7 @@ import { createMarket } from "../src/server/services/markets";
  * SUMMERUP_CLOSE_AT (any Date-parseable string, e.g. "2026-08-10T18:00+02:00").
  */
 
-const CLOSE_AT = new Date(process.env.SUMMERUP_CLOSE_AT ?? "2026-08-10T18:00:00+02:00");
+const CLOSE_AT = new Date(process.env.SUMMERUP_CLOSE_AT ?? "2026-08-14T16:00:00+02:00");
 
 function criteria(): string {
   const roster = TEAMS.map(
