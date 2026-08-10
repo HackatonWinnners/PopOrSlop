@@ -55,7 +55,8 @@ export default function SummerUpPage() {
           <>
             Every team in the hackathon, priced by everyone watching it. One
             categorical market, {SUMMERUP_TEAMS.length} outcomes, play money — the
-            percentage next to a team is the room&rsquo;s belief that it wins.
+            percentage next to a team is the room&rsquo;s belief that it wins. Read it
+            best and there&rsquo;s <b className="text-accent">€100</b> in it.
           </>
         }
       />
@@ -102,6 +103,8 @@ export default function SummerUpPage() {
               </p>
             )}
           </Card>
+
+          <PrizeCard closeAt={m.closeAt} />
 
           <div>
             <SectionLabel
@@ -158,6 +161,57 @@ export default function SummerUpPage() {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The €100 prize.
+ *
+ * Deliberately framed as a fixed contest prize for a skill ranking, not a
+ * payout on a wager: points can't be bought, so there is no stake and nothing
+ * here is redeemable. "Points have no monetary value" stays literally true —
+ * the prize is awarded by us for finishing top of a leaderboard, the same way
+ * a hackathon awards one. Keep that structure if you edit this copy.
+ */
+function PrizeCard({ closeAt }: { closeAt: Date | string }) {
+  const close = typeof closeAt === "string" ? new Date(closeAt) : closeAt;
+  return (
+    <Card className="border-accent/40 p-4">
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+        <Stat label="Prize" value="€100" sub="cash, one winner" tone="accent" />
+        <div className="min-w-64 flex-1 space-y-2 text-sm">
+          <p className="font-semibold">
+            €100 to whoever trades this market best.
+          </p>
+          <p className="text-muted">
+            When the winner is announced and the market resolves, we rank every trader by
+            profit on <b>this market alone</b> — everything your positions pay out, minus
+            everything you spent on them. Biggest number takes the €100.
+          </p>
+          <ul className="space-y-1 text-xs text-faint">
+            <li>
+              · Free to enter. Points are given, never sold — there&rsquo;s nothing to stake and
+              nothing to lose.
+            </li>
+            <li>
+              · Only trades placed before {close.toLocaleString()} count; that&rsquo;s when the
+              market locks.
+            </li>
+            <li>
+              · Profit is measured at resolution, so a paper lead now means nothing until the
+              winner is announced.
+            </li>
+            <li>
+              · Ties split the prize. The PopOrSlop team is not eligible — we run the thing.
+            </li>
+            <li>
+              · Your points stay points: they have no cash value and can&rsquo;t be redeemed.
+              The prize is ours to award, not your balance converted.
+            </li>
+          </ul>
+        </div>
+      </div>
+    </Card>
   );
 }
 
