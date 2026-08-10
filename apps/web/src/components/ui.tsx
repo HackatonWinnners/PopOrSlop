@@ -169,7 +169,9 @@ export function Logo({
       style={{ width: size, height: size, fontSize: size * 0.44 }}
       className="flex shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-surface-2 font-bold text-muted"
     >
-      {name[0]}
+      {/* Spread, not [0]: an emoji first character is a surrogate pair and
+          indexing splits it into a replacement glyph. */}
+      {[...name][0]}
     </div>
   );
 }

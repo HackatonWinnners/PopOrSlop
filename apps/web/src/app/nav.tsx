@@ -7,6 +7,7 @@ import { fmtPts } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
 
 const LINKS = [
+  ["/summerup", "SummerUp"],
   ["/markets", "Markets"],
   ["/portfolio", "Portfolio"],
   ["/leaderboard", "Leaderboard"],

@@ -11,10 +11,21 @@ import { PriceChart } from "./price-chart";
 import { TradePanel } from "./trade-panel";
 import { TradeTape } from "./trade-tape";
 
-export default function MarketPage({ params }: { params: Promise<{ slug: string }> }) {
+export default function MarketPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ o?: string }>;
+}) {
   const { slug } = use(params);
+  // ?o=<index> deep-links a specific outcome (the SummerUp page links this way).
+  const { o } = use(searchParams);
   const market = trpc.market.bySlug.useQuery({ slug }, { refetchInterval: 2000 });
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(() => {
+    const i = Number(o);
+    return Number.isInteger(i) && i >= 0 ? i : 0;
+  });
   const [tab, setTab] = useState<"trade" | "criteria" | "evidence">("trade");
 
   if (market.isLoading) return <p className="py-8 text-faint">Loading…</p>;
