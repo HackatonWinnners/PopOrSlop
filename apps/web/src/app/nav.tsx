@@ -56,12 +56,17 @@ export function Nav() {
               </span>
             </>
           ) : (
-            <Link
-              href="/join"
-              className="rounded-[var(--radius-control)] bg-accent px-3 py-1.5 font-semibold text-accent-ink hover:opacity-90"
-            >
-              Join
-            </Link>
+            <>
+              <Link href="/login" className="nav-link text-muted hover:text-ink">
+                Log in
+              </Link>
+              <Link
+                href="/join"
+                className="rounded-[var(--radius-control)] bg-accent px-3 py-1.5 font-semibold text-accent-ink hover:opacity-90"
+              >
+                Join
+              </Link>
+            </>
           )}
           <ThemeToggle />
         </div>

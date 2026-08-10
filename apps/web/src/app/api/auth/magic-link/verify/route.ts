@@ -7,7 +7,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const origin = requestOrigin(req);
   const token = url.searchParams.get("token");
-  if (!token) return NextResponse.redirect(new URL("/join?link=invalid", origin));
+  if (!token) return NextResponse.redirect(new URL("/login?link=invalid", origin));
 
   const cookies = Object.fromEntries(
     (req.headers.get("cookie") ?? "")
@@ -29,6 +29,6 @@ export async function GET(req: Request) {
     });
     return res;
   } catch {
-    return NextResponse.redirect(new URL("/join?link=invalid", origin));
+    return NextResponse.redirect(new URL("/login?link=invalid", origin));
   }
 }

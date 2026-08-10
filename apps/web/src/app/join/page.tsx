@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { MagicLinkForm } from "~/components/magic-link-form";
 import { deviceFingerprint } from "~/lib/fingerprint";
 
 /**
@@ -103,51 +105,17 @@ export default function JoinPage() {
       >
         {busy ? "…" : "Get 1,000 pts →"}
       </button>
-      <MagicLinkLogin />
+      <div className="border-t border-line pt-4 text-sm">
+        <p className="mb-2 text-muted">
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-accent underline underline-offset-2">
+            Log in
+          </Link>{" "}
+          — or get a link here:
+        </p>
+        <MagicLinkForm />
+      </div>
     </form>
   );
 }
 
-/** Returning users (or event accounts that saved an email) sign back in here. */
-function MagicLinkLogin() {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-
-  async function send() {
-    if (!email) return;
-    await fetch("/api/auth/magic-link", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    setSent(true);
-  }
-
-  return (
-    <div className="border-t border-line pt-4 text-sm">
-      <p className="mb-2 text-muted">Already have an account? Sign in by email:</p>
-      {sent ? (
-        <p className="text-accent">
-          If that address has an account, a sign-in link is on its way (valid 15 min).
-        </p>
-      ) : (
-        <div className="flex gap-2">
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            placeholder="you@example.com"
-            className="min-w-0 flex-1 rounded border border-line-strong bg-surface px-3 py-2"
-          />
-          <button
-            type="button"
-            onClick={send}
-            className="shrink-0 rounded bg-surface-3 px-3 py-2 font-semibold hover:bg-surface-3"
-          >
-            Send link
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
