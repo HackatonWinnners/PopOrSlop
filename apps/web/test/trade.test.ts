@@ -108,6 +108,20 @@ describe("trade transaction", () => {
     await expectClean();
   });
 
+  it("NEW_ACCOUNT_CAP_PTS=0 disables the new-account cap", async () => {
+    const userId = await makeUser();
+    const market = await makeMarket(); // no market-level cap
+    const prev = process.env.NEW_ACCOUNT_CAP_PTS;
+    process.env.NEW_ACCOUNT_CAP_PTS = "0";
+    try {
+      // Well past the 250-pt default, on an account minutes old.
+      await executeTrade({ userId, marketId: market.id, outcomeIdx: 0, budget: pts(600) });
+    } finally {
+      process.env.NEW_ACCOUNT_CAP_PTS = prev;
+    }
+    await expectClean();
+  });
+
   it("enforces the maxCost slippage bound", async () => {
     const userId = await makeUser();
     const market = await makeMarket();
