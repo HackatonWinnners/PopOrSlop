@@ -3,9 +3,8 @@
  *
  * Behind Coolify's Traefik the app sees plain http on an internal port, so
  * `req.url` reports the wrong scheme and host. The forwarded headers are the
- * truth. This matters more than cosmetics for OAuth: Google compares the
- * `redirect_uri` byte-for-byte against the registered one, so getting the
- * scheme wrong fails the whole flow with redirect_uri_mismatch.
+ * truth. Getting this wrong mails people a sign-in link pointing at
+ * localhost:3000 — the link is valid, but it goes nowhere they can reach.
  *
  * PUBLIC_ORIGIN overrides everything — set it if the app ever sits behind a
  * proxy that doesn't forward these headers.

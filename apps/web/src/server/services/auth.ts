@@ -176,11 +176,11 @@ export type SessionUser = Awaited<ReturnType<typeof getSessionUser>>;
 /**
  * Resolve a *proven* address to an account, creating one if needed.
  *
- * Both sign-in routes end here — a clicked magic link and a Google ID token
- * answer the same question ("does this person control this mailbox?"), so
- * they must resolve identity identically or the two paths drift into
- * different notions of who owns an address. Every branch stamps
- * `email_verified_at`, because reaching this function *is* the proof:
+ * Kept separate from token consumption so any future sign-in method that can
+ * prove mailbox ownership resolves identity the same way — two paths with
+ * different notions of who owns an address is how accounts get duplicated.
+ * Every branch stamps `email_verified_at`, because reaching here *is* the
+ * proof:
  * - the address already owns an account → sign that account in;
  * - visitor is signed in to an account with no verified email → attach it
  *   (the account-merge path for event signups);
@@ -266,22 +266,6 @@ export async function verifyMagicLink(
   });
 }
 
-/**
- * Sign in an address proven by an external identity provider. The caller is
- * responsible for having actually verified it — see the Google callback route,
- * which only reaches here with an `email_verified` ID token claim obtained
- * directly from Google's token endpoint.
- */
-export async function signInWithProvenEmail(
-  email: string,
-  currentUser: SessionUser,
-): Promise<{ token: string; expiresAt: Date }> {
-  const normalized = email.trim().toLowerCase();
-  return db.transaction(async (tx) => {
-    const userId = await resolveProvenEmail(tx, normalized, currentUser);
-    return issueSession(tx, userId);
-  });
-}
 
 export async function getSessionUser(token: string | undefined) {
   if (!token) return null;
