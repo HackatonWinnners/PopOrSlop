@@ -391,11 +391,20 @@ export const waitlistSignups = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     email: text("email").notNull(),
+    /** "vc" = wants the odds API; "startup" = wants to be listed. Different
+     *  queues entirely — a listing lead lost in the fund waitlist is a sale
+     *  lost. */
+    kind: text("kind").notNull().default("vc"),
+    /** Fund name for vc, company name for startup. */
     fundName: text("fund_name"),
+    /** Startup's site or deck. */
+    link: text("link"),
     note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [unique("waitlist_email_unique").on(t.email)],
+  // Per (email, kind): the same person can be a fund contact and later list
+  // their own company without one silently swallowing the other.
+  (t) => [unique("waitlist_email_unique").on(t.email, t.kind)],
 );
 
 export const quests = pgTable("quests", {

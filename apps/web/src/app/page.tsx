@@ -14,10 +14,20 @@ export default function StartupsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader
-        title="Startups"
-        blurb="Every startup has a profile, a tradable token, and prediction markets that resolve against public records. Points only — no monetary value, ever."
-      />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <PageHeader
+          title="Startups"
+          blurb="Every startup has a profile, a tradable token, and prediction markets that resolve against public records. Points only — no monetary value, ever."
+        />
+        {/* Founders land here first — the grid is the pitch, so the ask goes
+            next to it rather than buried in a footer nobody reaches. */}
+        <Link
+          href="/list-your-startup"
+          className="mb-6 shrink-0 rounded-[var(--radius-control)] border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent-soft"
+        >
+          Are you a startup? Get listed →
+        </Link>
+      </div>
 
       <section>
         <SectionLabel index="01">Listed — token live</SectionLabel>

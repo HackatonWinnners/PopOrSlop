@@ -158,6 +158,21 @@ export default function SummerUpPage() {
           </div>
 
           <SideMarkets />
+
+          {/* 114 founders will read this page. It's the best-qualified
+              audience the listing funnel will ever get. */}
+          <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <p className="text-sm text-muted">
+              <b className="text-ink">Building one of these?</b> Keep the momentum after
+              Friday — get a profile, a token, and markets on your own milestones.
+            </p>
+            <Link
+              href="/list-your-startup"
+              className="shrink-0 rounded-[var(--radius-control)] border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent-soft"
+            >
+              List your startup →
+            </Link>
+          </Card>
         </>
       )}
     </div>
