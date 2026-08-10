@@ -15,7 +15,9 @@ const handler = (req: Request) =>
           .map((c) => c.trim().split("=", 2) as [string, string])
           .filter(([k]) => k),
       );
-      return createContext({ sessionToken: cookies[SESSION_COOKIE] });
+      const proto = req.headers.get("x-forwarded-proto") ?? "http";
+      const host = req.headers.get("host") ?? "localhost:3000";
+      return createContext({ sessionToken: cookies[SESSION_COOKIE], origin: `${proto}://${host}` });
     },
   });
 

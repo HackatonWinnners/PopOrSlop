@@ -37,14 +37,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid input" }, { status: 400 });
   }
   try {
-    const { token, expiresAt } = await signup({
+    const proto = req.headers.get("x-forwarded-proto") ?? "http";
+    const host = req.headers.get("host") ?? "localhost:3000";
+    const { token, expiresAt, verificationSent } = await signup({
       handle: parsed.data.handle,
       team: parsed.data.team || undefined,
       email: parsed.data.email || undefined,
       ref: parsed.data.ref || undefined,
       deviceFp: parsed.data.deviceFp || undefined,
+      baseUrl: `${proto}://${host}`,
     });
-    const res = NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true, verificationSent });
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",

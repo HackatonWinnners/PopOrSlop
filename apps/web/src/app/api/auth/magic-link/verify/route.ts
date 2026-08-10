@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   try {
     const session = await verifyMagicLink(token, currentUser);
-    const res = NextResponse.redirect(new URL("/", url.origin));
+    const res = NextResponse.redirect(new URL("/?email=verified", url.origin));
     res.cookies.set(SESSION_COOKIE, session.token, {
       httpOnly: true,
       sameSite: "lax",

@@ -84,7 +84,9 @@ export default function JoinPage() {
         />
       </label>
       <label className="block text-sm">
-        <span className="text-muted">Email (optional — keeps your account after the event)</span>
+        <span className="text-muted">
+          Email (optional — we send a link to confirm it; keeps your account after the event)
+        </span>
         <input
           value={email}
           onChange={(e) => setEmail(e.target.value)}

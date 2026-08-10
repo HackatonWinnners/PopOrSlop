@@ -9,7 +9,7 @@ import { SYSTEM, postEntries } from "./ledger";
  * Quests (growth mechanic): complete a task, earn points.
  *
  * Verification kinds:
- *  - auto:   an internal fact we can check ourselves (first trade, email set…)
+ *  - auto:   an internal fact we can check ourselves (first trade, verified email…)
  *  - code:   redemption code shown by the external app/partner after the task
  *  - manual: user submits proof, admin approves in the console
  *
@@ -18,20 +18,26 @@ import { SYSTEM, postEntries } from "./ledger";
  * posted in the same transaction that inserts/approves the completion.
  */
 
-export type AutoRule = "first_trade" | "email_set" | "traded_3_markets";
+export type AutoRule = "first_trade" | "email_verified" | "traded_3_markets";
 
 export function hashQuestCode(code: string): string {
   return createHash("sha256").update(code.trim().toLowerCase()).digest("hex");
 }
 
 async function checkAutoRule(tx: Tx, rule: string, userId: string): Promise<boolean> {
-  switch (rule as AutoRule) {
+  switch (rule) {
     case "first_trade": {
       const r = await tx.execute(sql`SELECT 1 FROM trades WHERE user_id = ${userId} LIMIT 1`);
       return r.rows.length > 0;
     }
-    case "email_set": {
-      const r = await tx.execute(sql`SELECT 1 FROM users WHERE id = ${userId} AND email IS NOT NULL`);
+    // "email_set" is the pre-verification name, still on rows seeded before
+    // verification existed; both require a *proven* address so the reward
+    // can't be farmed with a typed-in fake.
+    case "email_set":
+    case "email_verified": {
+      const r = await tx.execute(
+        sql`SELECT 1 FROM users WHERE id = ${userId} AND email_verified_at IS NOT NULL`,
+      );
       return r.rows.length > 0;
     }
     case "traded_3_markets": {

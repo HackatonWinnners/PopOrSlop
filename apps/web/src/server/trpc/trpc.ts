@@ -5,10 +5,18 @@ import { DomainError, type DomainErrorCode } from "../services/errors";
 
 export interface TrpcContext {
   user: Awaited<ReturnType<typeof getSessionUser>>;
+  /** Request origin — needed to build absolute links in outgoing email. */
+  origin: string;
 }
 
-export async function createContext(opts: { sessionToken?: string }): Promise<TrpcContext> {
-  return { user: await getSessionUser(opts.sessionToken) };
+export async function createContext(opts: {
+  sessionToken?: string;
+  origin?: string;
+}): Promise<TrpcContext> {
+  return {
+    user: await getSessionUser(opts.sessionToken),
+    origin: opts.origin ?? "http://localhost:3000",
+  };
 }
 
 const t = initTRPC.context<TrpcContext>().create({

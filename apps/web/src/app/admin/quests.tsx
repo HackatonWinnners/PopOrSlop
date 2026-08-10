@@ -78,7 +78,9 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
   const [kind, setKind] = useState<"auto" | "code" | "manual">("manual");
-  const [rule, setRule] = useState<"first_trade" | "email_set" | "traded_3_markets">("first_trade");
+  const [rule, setRule] = useState<"first_trade" | "email_verified" | "traded_3_markets">(
+    "first_trade",
+  );
   const [codeValue, setCodeValue] = useState("");
   const [reward, setReward] = useState(1000);
   const [error, setError] = useState<string | null>(null);
@@ -144,7 +146,7 @@ function CreateQuestForm({ onDone }: { onDone: () => void }) {
             <span className="text-muted">Rule</span>
             <select value={rule} onChange={(e) => setRule(e.target.value as never)} className={input}>
               <option value="first_trade">placed a trade</option>
-              <option value="email_set">added an email</option>
+              <option value="email_verified">verified their email</option>
               <option value="traded_3_markets">traded 3 markets</option>
             </select>
           </label>

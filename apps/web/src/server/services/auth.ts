@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { pts } from "@poporslop/lmsr";
-import { eq } from "drizzle-orm";
-import { db } from "../db/client";
+import { asc, eq } from "drizzle-orm";
+import { type Tx, db } from "../db/client";
 import { magicLinkTokens, sessions, users } from "../db/schema";
 import { DomainError } from "./errors";
 import { SYSTEM, postEntries } from "./ledger";
@@ -21,6 +21,11 @@ function hashToken(token: string): string {
  * W0 auth-lite: handle (+ optional team & email) → funded account + session.
  * The signup grant is a balanced ledger group against the treasury, so the
  * global zero-sum invariant holds from the first user on.
+ *
+ * An email given here is *claimed, not proven*: it lands in `pending_email`
+ * (non-unique) and only moves into the unique `users.email` slot once the
+ * owner clicks the verification link. Otherwise anyone could type a stranger's
+ * address at signup and permanently lock them out of registering it.
  */
 export async function signup(input: {
   handle: string;
@@ -30,11 +35,14 @@ export async function signup(input: {
   ref?: string;
   /** Best-effort client device fingerprint (spec §8). */
   deviceFp?: string;
-}): Promise<{ userId: string; token: string; expiresAt: Date }> {
+  /** Origin for the verification link; omit to skip sending (tests, scripts). */
+  baseUrl?: string;
+}): Promise<{ userId: string; token: string; expiresAt: Date; verificationSent: boolean }> {
   if (!HANDLE_RE.test(input.handle)) {
     throw new DomainError("BAD_STATE", "handle must be 2-24 chars [a-zA-Z0-9_-]");
   }
-  return db.transaction(async (tx) => {
+  const pendingEmail = input.email?.trim().toLowerCase() || null;
+  const result = await db.transaction(async (tx) => {
     let referredBy: string | null = null;
     if (input.ref && input.ref !== input.handle) {
       const [referrer] = await tx
@@ -48,13 +56,13 @@ export async function signup(input: {
       .values({
         handle: input.handle,
         team: input.team,
-        email: input.email || null,
+        pendingEmail,
         referredBy,
         deviceFp: input.deviceFp?.slice(0, 64) || null,
       })
       .returning({ id: users.id })
       .catch((e: { code?: string }) => {
-        if (e.code === "23505") throw new DomainError("BAD_STATE", "handle or email already taken");
+        if (e.code === "23505") throw new DomainError("BAD_STATE", "handle already taken");
         throw e;
       });
 
@@ -68,16 +76,24 @@ export async function signup(input: {
     await tx.insert(sessions).values({ userId: user!.id, tokenHash: hashToken(token), expiresAt });
     return { userId: user!.id, token, expiresAt };
   });
+
+  // Sent after commit: a delivery failure must not roll back the account.
+  let verificationSent = false;
+  if (pendingEmail && input.baseUrl) {
+    await sendEmailLink(pendingEmail, input.baseUrl, "verify");
+    verificationSent = true;
+  }
+  return { ...result, verificationSent };
 }
 
 const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
 
 /**
- * W1 magic-link flow. Request: store a hashed one-time token; delivery via
- * Resend when RESEND_API_KEY is set, console fallback in dev. The route
- * always answers 200 so account existence never leaks.
+ * Issue a one-time link to `email` and deliver it. Sign-in and verification
+ * are the same primitive — both are "prove you can read this mailbox" — so
+ * only the copy differs; the token is interchangeable.
  */
-export async function requestMagicLink(email: string, baseUrl: string): Promise<void> {
+async function sendEmailLink(email: string, baseUrl: string, purpose: "signin" | "verify") {
   const token = randomBytes(32).toString("base64url");
   await db.insert(magicLinkTokens).values({
     email: email.toLowerCase(),
@@ -85,6 +101,16 @@ export async function requestMagicLink(email: string, baseUrl: string): Promise<
     expiresAt: new Date(Date.now() + MAGIC_LINK_TTL_MS),
   });
   const url = `${baseUrl}/api/auth/magic-link/verify?token=${token}`;
+  const copy =
+    purpose === "verify"
+      ? {
+          subject: "Confirm your PopOrSlop email",
+          text: `Confirm this address to secure your PopOrSlop account (link valid 15 minutes):\n\n${url}\n\nIf you didn't sign up, ignore this — the address stays unclaimed.`,
+        }
+      : {
+          subject: "Your PopOrSlop sign-in link",
+          text: `Sign in to PopOrSlop (link valid 15 minutes):\n\n${url}\n\nIf you didn't request this, ignore it.`,
+        };
   const key = process.env.RESEND_API_KEY;
   if (key) {
     const res = await fetch("https://api.resend.com/emails", {
@@ -93,21 +119,66 @@ export async function requestMagicLink(email: string, baseUrl: string): Promise<
       body: JSON.stringify({
         from: process.env.MAGIC_LINK_FROM ?? "PopOrSlop <login@poporslop.dev>",
         to: email,
-        subject: "Your PopOrSlop sign-in link",
-        text: `Sign in to PopOrSlop (link valid 15 minutes):\n\n${url}\n\nIf you didn't request this, ignore it.`,
+        ...copy,
       }),
     });
     if (!res.ok) console.error(`[auth] resend failed: ${res.status} ${await res.text()}`);
   } else {
-    console.log(`[auth] magic link for ${email} (no RESEND_API_KEY, dev mode):\n  ${url}`);
+    console.log(`[auth] ${purpose} link for ${email} (no RESEND_API_KEY, dev mode):\n  ${url}`);
   }
 }
 
 /**
- * Verify a magic-link token and resolve it to a session:
+ * W1 magic-link flow. Request: store a hashed one-time token; delivery via
+ * Resend when RESEND_API_KEY is set, console fallback in dev. The route
+ * always answers 200 so account existence never leaks.
+ */
+export async function requestMagicLink(email: string, baseUrl: string): Promise<void> {
+  await sendEmailLink(email.trim().toLowerCase(), baseUrl, "signin");
+}
+
+/**
+ * Claim (or re-claim) an address for a signed-in account and send the
+ * verification link. Nothing about the account changes until the link is
+ * clicked — an unverified claim is just a note on the row.
+ */
+export async function requestEmailVerification(
+  userId: string,
+  email: string,
+  baseUrl: string,
+): Promise<void> {
+  const normalized = email.trim().toLowerCase();
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) throw new DomainError("NOT_AUTHORIZED", "no such account");
+  if (user.email === normalized && user.emailVerifiedAt) {
+    throw new DomainError("BAD_STATE", "that address is already verified");
+  }
+  await db.update(users).set({ pendingEmail: normalized }).where(eq(users.id, userId));
+  await sendEmailLink(normalized, baseUrl, "verify");
+}
+
+/** Mark `email` as this account's verified address, clearing the pending claim. */
+async function markVerified(tx: Tx, userId: string, email: string): Promise<void> {
+  await tx
+    .update(users)
+    .set({ email, pendingEmail: null, emailVerifiedAt: new Date() })
+    .where(eq(users.id, userId))
+    .catch((e: { code?: string }) => {
+      if (e.code === "23505") {
+        throw new DomainError("BAD_STATE", "that address already belongs to another account");
+      }
+      throw e;
+    });
+}
+
+/**
+ * Verify a one-time email token and resolve it to a session. Clicking the
+ * link is proof of mailbox ownership, so every path below also stamps
+ * `email_verified_at`:
  * - token's email already owns an account → sign that account in;
- * - visitor is signed in to a W0 handle-only account with no email → attach
- *   the email to it (the account-merge path for event signups);
+ * - visitor is signed in to an account with no verified email → attach it
+ *   (the account-merge path for event signups);
+ * - some account is *pending* this address (signup claim) → promote it;
  * - otherwise → create a fresh funded account with a handle derived from the
  *   email local part.
  */
@@ -129,32 +200,45 @@ export async function verifyMagicLink(
 
     let userId: string;
     if (owner) {
+      // Pre-verification accounts (and W0 event signups) get stamped on first click.
+      if (!owner.emailVerifiedAt) await markVerified(tx, owner.id, row.email);
       userId = owner.id;
     } else if (currentUser && !currentUser.email && !currentUser.isSystem) {
-      await tx.update(users).set({ email: row.email }).where(eq(users.id, currentUser.id));
+      await markVerified(tx, currentUser.id, row.email);
       userId = currentUser.id;
     } else {
-      const base =
-        row.email
-          .split("@")[0]!
-          .replace(/[^a-zA-Z0-9_-]/g, "")
-          .slice(0, 20) || "trader";
-      let handle = base.length >= 2 ? base : `${base}42`;
-      for (let i = 0; ; i++) {
-        const [taken] = await tx.select({ id: users.id }).from(users).where(eq(users.handle, handle));
-        if (!taken) break;
-        handle = `${base.slice(0, 16)}${randomBytes(2).toString("hex")}`;
-        if (i > 5) throw new DomainError("BAD_STATE", "could not allocate handle");
+      const [claimant] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.pendingEmail, row.email))
+        .orderBy(asc(users.createdAt))
+        .limit(1);
+      if (claimant) {
+        await markVerified(tx, claimant.id, row.email);
+        userId = claimant.id;
+      } else {
+        const base =
+          row.email
+            .split("@")[0]!
+            .replace(/[^a-zA-Z0-9_-]/g, "")
+            .slice(0, 20) || "trader";
+        let handle = base.length >= 2 ? base : `${base}42`;
+        for (let i = 0; ; i++) {
+          const [taken] = await tx.select({ id: users.id }).from(users).where(eq(users.handle, handle));
+          if (!taken) break;
+          handle = `${base.slice(0, 16)}${randomBytes(2).toString("hex")}`;
+          if (i > 5) throw new DomainError("BAD_STATE", "could not allocate handle");
+        }
+        const [created] = await tx
+          .insert(users)
+          .values({ handle, email: row.email, emailVerifiedAt: new Date() })
+          .returning({ id: users.id });
+        await postEntries(tx, [
+          { userId: SYSTEM.houseTreasury, delta: -SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
+          { userId: created!.id, delta: SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
+        ]);
+        userId = created!.id;
       }
-      const [created] = await tx
-        .insert(users)
-        .values({ handle, email: row.email })
-        .returning({ id: users.id });
-      await postEntries(tx, [
-        { userId: SYSTEM.houseTreasury, delta: -SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
-        { userId: created!.id, delta: SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
-      ]);
-      userId = created!.id;
     }
 
     const sessionToken = randomBytes(32).toString("base64url");

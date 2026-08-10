@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fragment_Mono, IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { EmailBanner } from "./email-banner";
 import { Nav } from "./nav";
 import { Providers } from "./providers";
 
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-dvh">
         <Providers>
           <Nav />
+          <EmailBanner />
           <main className="mx-auto w-full max-w-[var(--shell)] px-5 pb-20">{children}</main>
         </Providers>
       </body>

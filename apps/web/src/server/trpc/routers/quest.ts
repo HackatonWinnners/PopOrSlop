@@ -57,7 +57,7 @@ export const questRouter = router({
         description: z.string().min(5).max(1000),
         url: z.string().url().optional(),
         kind: z.enum(["auto", "code", "manual"]),
-        rule: z.enum(["first_trade", "email_set", "traded_3_markets"]).optional(),
+        rule: z.enum(["first_trade", "email_verified", "traded_3_markets"]).optional(),
         code: z.string().min(4).max(120).optional(),
         rewardPoints: z.number().int().min(1).max(100_000),
       }),

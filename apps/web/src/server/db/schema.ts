@@ -79,7 +79,12 @@ export const users = pgTable(
   "users",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    /** Verified address. Only ever written once ownership is proven by a link click. */
     email: text("email").unique(),
+    /** Address claimed but not yet proven — deliberately NOT unique, so an
+     *  unverified claim can never squat someone else's real address. */
+    pendingEmail: text("pending_email"),
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     handle: text("handle").notNull().unique(),
     team: text("team"),
     deviceFp: text("device_fp"),
@@ -394,7 +399,7 @@ export const quests = pgTable("quests", {
   url: text("url"),
   /** auto = internal fact check; code = redemption code; manual = proof + admin review. */
   kind: text("kind").notNull(),
-  /** auto quests: which internal rule verifies completion (first_trade | email_set | traded_3_markets). */
+  /** auto quests: which internal rule verifies completion (first_trade | email_verified | traded_3_markets). */
   rule: text("rule"),
   codeHash: text("code_hash"),
   reward: bigint("reward", { mode: "bigint" }).notNull(),

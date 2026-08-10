@@ -22,10 +22,10 @@ async function main() {
     },
     {
       slug: "keep-your-account",
-      title: "Add your email",
-      description: "Add an email (sign in by magic link once) so your account survives the event.",
+      title: "Verify your email",
+      description: "Confirm your address from the link we email you, so your account survives the event.",
       kind: "auto",
-      rule: "email_set",
+      rule: "email_verified",
       reward: 100n * 1_000_000n,
     },
     {

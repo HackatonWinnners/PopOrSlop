@@ -77,7 +77,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 - **FR-3** Trading: buy by points budget (system computes max shares) or sell held shares; server-side slippage bound; no shorting; winning share pays exactly 1 point. ✅
 - **FR-4** All accounting is a double-entry ledger against house accounts. Invariants (global zero-sum, balanced entry groups, balance-cache consistency, positions ≡ trade history) are machine-checked and surfaced in the admin console. ✅
 - **FR-5** Points economy: 1,000 pts signup grant; 25 pts daily active drip (claimed on first visit of each UTC day); 250 pts referral bonus paid to the referrer when the referee places their **first trade** (skin-in-the-game gate), denied when both accounts share a device fingerprint; no purchase path, no cash-value prizes, no sinks in v1. ✅
-- **FR-5a** Quests: admin-curated tasks that pay point rewards, with three verification kinds — **auto** (internal fact checks: first trade, email added, traded 3 markets), **code** (redemption code shown by an external app/partner after the task; hashed at rest, case-insensitive, wrong attempts don't burn the claim), **manual** (user submits proof, admin approves/rejects in the console; one shot per quest). Rewards are balanced treasury→user ledger groups, exactly-once per (quest, user). ✅
+- **FR-5a** Quests: admin-curated tasks that pay point rewards, with three verification kinds — **auto** (internal fact checks: first trade, **verified** email, traded 3 markets), **code** (redemption code shown by an external app/partner after the task; hashed at rest, case-insensitive, wrong attempts don't burn the claim), **manual** (user submits proof, admin approves/rejects in the console; one shot per quest). Rewards are balanced treasury→user ledger groups, exactly-once per (quest, user). ✅
 
 ### 4.2 Contract taxonomy & listing policy
 
@@ -105,7 +105,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 
 ### 4.5 Integrity & anti-manipulation
 
-- **FR-21** One account per email; best-effort client device fingerprint (hashed browser signals) stored at signup and used for referral anti-abuse. Detection is best-effort by design — the public rules are the deterrent. ✅
+- **FR-21** One account per **verified** email — an address claimed at signup sits in `pending_email` and only takes the unique account slot once its owner clicks the confirmation link, so nobody can squat a stranger's address; best-effort client device fingerprint (hashed browser signals) stored at signup and used for referral anti-abuse. Detection is best-effort by design — the public rules are the deterrent. ✅
 - **FR-22** New accounts (< 7 days): tighter per-market exposure cap (default 250 pts, configurable; event mode raises it). ✅
 - **FR-23** I3 (funding) markets: 500-pt cost-basis cap per user per market. Event markets: 300 pts. ✅
 - **FR-24** Founder self-trading allowed **only self-flagged** (public insider badge on the trade tape). Unflagged insider trading → positions voided (forced zero-cost sale, publicly visible on the tape) + account ban. Deterrence is the public rule, not perfect detection. ✅
@@ -114,7 +114,7 @@ Requirements are numbered FR-x (functional) and NFR-x (non-functional). Status r
 
 ### 4.6 Identity & reputation
 
-- **FR-27** Auth: magic-link email sign-in (no passwords). Event mode: handle + team pick only, email optional; event accounts merge into full accounts when the email is later verified. Account-existence never leaks from auth endpoints. ✅
+- **FR-27** Auth: magic-link email sign-in (no passwords). Event mode: handle + team pick only, email optional (a confirmation link goes out at signup); event accounts merge into full accounts when the email is later verified. Sign-in and verification are the same one-time-link primitive, so clicking either one proves the mailbox and stamps `email_verified_at`. Account-existence never leaks from auth endpoints. ✅
 - **FR-28** Two leaderboards: realized P&L all-time and 90-day. ✅
 - **FR-29** Public calibration profile per trader: share-weighted Brier score + 10-bucket calibration curve over buys on resolved markets; M2 markets excluded from scoring. ✅
 
