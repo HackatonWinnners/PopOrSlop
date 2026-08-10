@@ -43,7 +43,7 @@ export function Nav() {
           </Link>
         ))}
         {me.data?.isAdmin && (
-          <Link href="/admin" className="nav-link text-warn hover:opacity-80">
+          <Link href="/admin" className="nav-link hidden text-warn hover:opacity-80 sm:inline">
             Admin
           </Link>
         )}
@@ -70,6 +70,34 @@ export function Nav() {
           )}
           <ThemeToggle />
         </div>
+      </div>
+
+      {/*
+       * Phone nav. The links above collapse at sm, which left phones with no
+       * way to reach any page at all — and this is a QR-poster event, so
+       * phones are the common case, not the edge one.
+       *
+       * A scrolling row rather than a hamburger: six destinations don't earn
+       * a menu, and one tap beats two when you're standing in a venue.
+       */}
+      <div className="flex gap-4 overflow-x-auto border-t border-line px-5 py-2 text-sm [scrollbar-width:none] sm:hidden [&::-webkit-scrollbar]:hidden">
+        {LINKS.map(([href, label]) => (
+          <Link
+            key={href}
+            href={href}
+            className={`nav-link shrink-0 ${
+              pathname.startsWith(href) ? "text-ink" : "text-muted"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
+        {me.data?.isAdmin && (
+          <Link href="/admin" className="nav-link shrink-0 text-warn">
+            Admin
+          </Link>
+        )}
+        {me.data && <span className="shrink-0 text-faint">@{me.data.handle}</span>}
       </div>
     </nav>
   );

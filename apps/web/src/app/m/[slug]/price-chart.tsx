@@ -17,10 +17,26 @@ export function PriceChart({ marketId, outcomes }: { marketId: string; outcomes:
   if (!history.data || history.data.length < 2) return null;
 
   // Leading outcomes only — beyond four, colour stops being readable.
+  //
+  // Ties are the norm in a big categorical market: 112 of 114 teams sit on the
+  // uniform prior, so ranking by price alone fills the last slots with flat
+  // lines that overlap into a single stripe. Break ties by how much the
+  // outcome actually moved, so the chart spends its four colours on the four
+  // series with something to show.
   const latest = history.data[history.data.length - 1]!.pAfter;
+  const range = outcomes.map((_, i) => {
+    let lo = Number.POSITIVE_INFINITY;
+    let hi = Number.NEGATIVE_INFINITY;
+    for (const h of history.data!) {
+      const v = h.pAfter[i] ?? 0;
+      if (v < lo) lo = v;
+      if (v > hi) hi = v;
+    }
+    return hi - lo;
+  });
   const shown = outcomes
-    .map((o, i) => ({ o, p: latest[i] ?? 0, i }))
-    .sort((a, b) => b.p - a.p)
+    .map((o, i) => ({ o, p: latest[i] ?? 0, i, moved: range[i] ?? 0 }))
+    .sort((a, b) => b.p - a.p || b.moved - a.moved)
     .slice(0, MAX_SERIES);
 
   const data = history.data.map((h) => {
