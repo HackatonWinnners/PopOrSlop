@@ -18,9 +18,14 @@ export function TradePanel({
 }) {
   const utils = trpc.useUtils();
   const me = trpc.me.useQuery();
-  const [budgetPts, setBudgetPts] = useState<number>(50);
   const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [sellShares, setSellShares] = useState<number>(0);
+  // Raw text, not numbers: with number state, clearing the field yields
+  // Number("") === 0, which re-renders as "0" — so the box can never be
+  // emptied and the zero sits in front of whatever you type next.
+  const [budgetInput, setBudgetInput] = useState("50");
+  const [sellInput, setSellInput] = useState("");
+  const budgetPts = Number(budgetInput) || 0;
+  const sellShares = Number(sellInput) || 0;
   const [selfFlagged, setSelfFlagged] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -123,7 +128,7 @@ export function TradePanel({
             {QUICK_BUDGETS.map((b) => (
               <button
                 key={b}
-                onClick={() => setBudgetPts(b)}
+                onClick={() => setBudgetInput(String(b))}
                 className={`rounded px-2.5 py-1 text-sm ${
                   budgetPts === b ? "bg-accent font-semibold text-accent-ink" : "bg-surface-2"
                 }`}
@@ -134,8 +139,11 @@ export function TradePanel({
             <input
               type="number"
               min={1}
-              value={budgetPts}
-              onChange={(e) => setBudgetPts(Number(e.target.value))}
+              inputMode="decimal"
+              placeholder="0"
+              value={budgetInput}
+              onChange={(e) => setBudgetInput(e.target.value)}
+              onFocus={(e) => e.target.select()}
               className="w-24 rounded border border-line-strong bg-surface px-2 py-1 text-sm"
             />
             <span className="text-sm text-faint">pts</span>
@@ -153,14 +161,17 @@ export function TradePanel({
               type="number"
               min={0}
               step="0.5"
-              value={sellShares}
-              onChange={(e) => setSellShares(Number(e.target.value))}
+              inputMode="decimal"
+              placeholder="0"
+              value={sellInput}
+              onChange={(e) => setSellInput(e.target.value)}
+              onFocus={(e) => e.target.select()}
               className="w-28 rounded border border-line-strong bg-surface px-2 py-1"
             />
             <span className="text-faint">shares</span>
             {held !== undefined && held > 0n && (
               <button
-                onClick={() => setSellShares(Number(held / 1000n) / 1000)}
+                onClick={() => setSellInput(String(Number(held / 1000n) / 1000))}
                 className="rounded bg-surface-2 px-2 py-1 text-xs"
               >
                 all ({fmtShares(held)})
