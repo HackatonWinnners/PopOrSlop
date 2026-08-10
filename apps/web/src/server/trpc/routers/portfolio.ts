@@ -5,6 +5,17 @@ import { db } from "../../db/client";
 import { lmsrState, markets, positions, users } from "../../db/schema";
 import { authedProcedure, publicProcedure, router } from "../trpc";
 
+/**
+ * Below a thousandth of a share a position is rounding dust, not a holding —
+ * it marks to under 0.001 pts and can't be meaningfully sold. Older sells
+ * left some behind by truncating "sell all"; that's fixed at the source, but
+ * the existing crumbs shouldn't haunt anyone's portfolio.
+ *
+ * Display only. The rows stay in the table, still reconcile against trades,
+ * and still pay out at resolution.
+ */
+const DUST_SHARES = 1000n;
+
 export const portfolioRouter = router({
   mine: authedProcedure.query(async ({ ctx }) => {
     const rows = await db
@@ -23,7 +34,7 @@ export const portfolioRouter = router({
       .from(positions)
       .innerJoin(markets, eq(markets.id, positions.marketId))
       .leftJoin(lmsrState, eq(lmsrState.marketId, positions.marketId))
-      .where(and(eq(positions.userId, ctx.user.id), gt(positions.shares, 0n)));
+      .where(and(eq(positions.userId, ctx.user.id), gt(positions.shares, DUST_SHARES)));
 
     const withMark = rows.map((r) => {
       const pm = r.q ? pricesMicro({ q: r.q, b: r.b }) : null;

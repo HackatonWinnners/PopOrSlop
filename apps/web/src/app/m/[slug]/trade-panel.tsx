@@ -24,13 +24,17 @@ export function TradePanel({
   // emptied and the zero sits in front of whatever you type next.
   const [budgetInput, setBudgetInput] = useState("50");
   const [sellInput, setSellInput] = useState("");
+  // "Sell all" must send the exact holding. Routing it through the decimal
+  // field truncates — bigint division floors — and strands a few µshares,
+  // which keeps a "0.0 shares" ghost sitting in the portfolio forever.
+  const [sellExactMicro, setSellExactMicro] = useState<bigint | null>(null);
   const budgetPts = Number(budgetInput) || 0;
   const sellShares = Number(sellInput) || 0;
   const [selfFlagged, setSelfFlagged] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const budgetMicro = BigInt(Math.max(0, Math.round(budgetPts * 1e6)));
-  const sellMicro = BigInt(Math.max(0, Math.round(sellShares * 1e6)));
+  const sellMicro = sellExactMicro ?? BigInt(Math.max(0, Math.round(sellShares * 1e6)));
 
   // bigint inputs go over as strings: react-query hashes queryKeys with
   // plain JSON.stringify, which cannot serialize BigInt.
@@ -164,14 +168,20 @@ export function TradePanel({
               inputMode="decimal"
               placeholder="0"
               value={sellInput}
-              onChange={(e) => setSellInput(e.target.value)}
+              onChange={(e) => {
+                setSellInput(e.target.value);
+                setSellExactMicro(null); // typed amount overrides "all"
+              }}
               onFocus={(e) => e.target.select()}
               className="w-28 rounded border border-line-strong bg-surface px-2 py-1"
             />
             <span className="text-faint">shares</span>
             {held !== undefined && held > 0n && (
               <button
-                onClick={() => setSellInput(String(Number(held / 1000n) / 1000))}
+                onClick={() => {
+                  setSellExactMicro(held);
+                  setSellInput(fmtShares(held, 4));
+                }}
                 className="rounded bg-surface-2 px-2 py-1 text-xs"
               >
                 all ({fmtShares(held)})
