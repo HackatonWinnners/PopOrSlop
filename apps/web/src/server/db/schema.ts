@@ -416,6 +416,8 @@ export const quests = pgTable("quests", {
    * the "review" is a timer and anyone who clicks gets paid.
    */
   autoApproveAfterS: integer("auto_approve_after_s"),
+  /** Require a recorded outbound click before the quest can be claimed. */
+  requiresStart: boolean("requires_start").notNull().default(false),
   reward: bigint("reward", { mode: "bigint" }).notNull(),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -438,6 +440,31 @@ export const questCompletions = pgTable(
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   },
   (t) => [unique("quest_completions_once").on(t.questId, t.userId)],
+);
+
+/**
+ * Proof that a user actually left for the partner's app, recorded server-side
+ * when they follow the outbound link.
+ *
+ * Not proof they did the task — only the partner can tell us that. It closes
+ * the cheapest hole (claiming a partner quest without ever opening it) and
+ * carries the per-user `payload` we hand Telegram as a deep-link `?start=`,
+ * so when Facestic can post back, it already knows which trader to name.
+ */
+export const questStarts = pgTable(
+  "quest_starts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    questId: uuid("quest_id")
+      .notNull()
+      .references(() => quests.id),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    payload: text("payload").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("quest_starts_once").on(t.questId, t.userId)],
 );
 
 // P2 architectural insurance — schema reserved, unused in v1.

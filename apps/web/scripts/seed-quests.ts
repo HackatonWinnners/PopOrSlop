@@ -43,6 +43,8 @@ async function main() {
       // No postback from Facestic yet, so the claim self-approves on a timer.
       // Swap this to null the day we can actually check a sticker was made.
       autoApproveAfterS: 300,
+      // Can't verify the sticker, but we can at least require they opened the bot.
+      requiresStart: true,
       reward: 500n * 1_000_000n,
     },
     {
@@ -67,6 +69,7 @@ async function main() {
         url: "url" in q ? q.url : null,
         rule: "rule" in q ? q.rule : null,
         autoApproveAfterS: "autoApproveAfterS" in q ? q.autoApproveAfterS : null,
+        requiresStart: "requiresStart" in q ? q.requiresStart : false,
         // No code quests in the default set; the admin console creates those,
         // since the code has to come from a partner who actually issues it.
         codeHash: null,

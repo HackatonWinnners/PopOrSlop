@@ -8,6 +8,7 @@ import {
   claimQuest,
   hashQuestCode,
   reviewQuestSubmission,
+  startQuest,
   sweepTimedQuestApprovals,
 } from "../src/server/services/quests";
 import { executeTrade } from "../src/server/services/trade";
@@ -159,5 +160,49 @@ describe("timed quests (partner apps with no postback yet)", () => {
     await db.execute(sql`UPDATE quest_completions SET created_at = now() - interval '30 days'`);
     expect(await sweepTimedQuestApprovals()).toBe(0);
     await expectClean();
+  });
+});
+
+describe("partner quests require actually leaving for the partner", () => {
+  beforeEach(resetDb);
+
+  it("refuses a claim from someone who never opened the link", async () => {
+    const userId = await makeUser();
+    await makeQuest({
+      slug: "facestic-sticker",
+      kind: "manual",
+      url: "https://t.me/facestic_bot",
+      requiresStart: true,
+      autoApproveAfterS: 300,
+      reward: pts(500),
+    });
+
+    await expect(claimQuest({ userId, questSlug: "facestic-sticker" })).rejects.toThrow(
+      /open the task link first/,
+    );
+
+    const target = await startQuest(userId, "facestic-sticker");
+    expect(target).toMatch(/^https:\/\/t\.me\/facestic_bot\?start=[\w-]{32}$/);
+
+    expect(await claimQuest({ userId, questSlug: "facestic-sticker" })).toEqual({
+      status: "pending",
+    });
+    await expectClean();
+  });
+
+  it("the deep-link payload is stable per user and differs between users", async () => {
+    await makeQuest({
+      slug: "facestic-sticker",
+      kind: "manual",
+      url: "https://t.me/facestic_bot",
+      requiresStart: true,
+      reward: pts(500),
+    });
+    const a = await makeUser();
+    const b = await makeUser();
+    const first = await startQuest(a, "facestic-sticker");
+    // Re-opening must not mint a new identity — the partner would see two people.
+    expect(await startQuest(a, "facestic-sticker")).toBe(first);
+    expect(await startQuest(b, "facestic-sticker")).not.toBe(first);
   });
 });

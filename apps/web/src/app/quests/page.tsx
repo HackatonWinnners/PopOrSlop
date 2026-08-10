@@ -47,6 +47,8 @@ function QuestCard({
     url: string | null;
     kind: "auto" | "code" | "manual";
     autoApproveAfterS: number | null;
+    requiresStart: boolean;
+    started: boolean;
     reward: bigint;
     myStatus: "pending" | "approved" | "rejected" | null;
   };
@@ -74,6 +76,8 @@ function QuestCard({
       : `${quest.autoApproveAfterS!}s`
     : null;
 
+  const needsStart = quest.requiresStart && !quest.started;
+
   const submit = () => {
     setError(null);
     claim.mutate({
@@ -91,12 +95,12 @@ function QuestCard({
           <p className="mt-1 text-sm text-muted">{quest.description}</p>
           {quest.url && (
             <a
-              href={quest.url}
+              href={quest.requiresStart ? `/api/quests/${quest.slug}/start` : quest.url}
               target="_blank"
               rel="noreferrer"
-              className="mt-1 inline-block text-sm text-accent underline"
+              className="mt-1 inline-block text-sm font-semibold text-accent underline"
             >
-              open task ↗
+              {quest.requiresStart && !quest.started ? "open task first ↗" : "open task ↗"}
             </a>
           )}
         </div>
@@ -140,7 +144,8 @@ function QuestCard({
               )}
               <button
                 onClick={submit}
-                disabled={claim.isPending}
+                disabled={claim.isPending || needsStart}
+                title={needsStart ? "Open the task link first" : undefined}
                 className="rounded bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink hover:opacity-90 disabled:opacity-50"
               >
                 {quest.kind === "auto" || timed
@@ -151,7 +156,12 @@ function QuestCard({
               </button>
             </div>
           )}
-          {quest.myStatus === null && timed && (
+          {quest.myStatus === null && needsStart && (
+            <p className="mt-1 text-xs text-faint">
+              Open the task link above first — we only count claims from people who went.
+            </p>
+          )}
+          {quest.myStatus === null && timed && !needsStart && (
             <p className="mt-1 text-xs text-faint">
               Clears about {waitLabel} after you claim — no proof needed.
             </p>

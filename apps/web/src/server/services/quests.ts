@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { type Tx, db } from "../db/client";
-import { questCompletions, quests } from "../db/schema";
+import { questCompletions, questStarts, quests } from "../db/schema";
 import { DomainError } from "./errors";
 import { SYSTEM, postEntries } from "./ledger";
 
@@ -22,6 +22,48 @@ export type AutoRule = "first_trade" | "email_verified" | "traded_3_markets";
 
 export function hashQuestCode(code: string): string {
   return createHash("sha256").update(code.trim().toLowerCase()).digest("hex");
+}
+
+/**
+ * Opaque per-(user, quest) handle sent to the partner as a deep-link payload.
+ *
+ * Derived, not random, so the same user always gets the same one and we can
+ * recognise it in a postback without storing a lookup. Salted with
+ * SESSION_SECRET so it can't be computed from a user id, and truncated to fit
+ * Telegram's 64-char `?start=` limit.
+ */
+export function questPayload(questId: string, userId: string): string {
+  return createHash("sha256")
+    .update(`${questId}:${userId}:${process.env.SESSION_SECRET ?? "dev"}`)
+    .digest("base64url")
+    .slice(0, 32);
+}
+
+/**
+ * Record that a user followed a quest's outbound link, and hand back where to
+ * send them. Idempotent — re-opening the link doesn't reset anything.
+ *
+ * This is a weak signal by construction: it proves they left, not that they
+ * did the task. It exists so a partner quest can't be claimed by someone who
+ * never opened it, and so the payload is already in place when the partner
+ * can confirm the real thing.
+ */
+export async function startQuest(userId: string, questSlug: string): Promise<string> {
+  const [quest] = await db.select().from(quests).where(eq(quests.slug, questSlug));
+  if (!quest || !quest.active) throw new DomainError("BAD_STATE", "quest not found or inactive");
+  if (!quest.url) throw new DomainError("BAD_STATE", "quest has no link to follow");
+
+  const payload = questPayload(quest.id, userId);
+  await db
+    .insert(questStarts)
+    .values({ questId: quest.id, userId, payload })
+    .onConflictDoNothing();
+
+  // Telegram passes ?start=… straight to the bot, which is how Facestic will
+  // eventually tie a sticker back to a trader. Harmless on any other URL.
+  const url = new URL(quest.url);
+  if (!url.searchParams.has("start")) url.searchParams.set("start", payload);
+  return url.toString();
 }
 
 async function checkAutoRule(tx: Tx, rule: string, userId: string): Promise<boolean> {
@@ -73,6 +115,16 @@ export async function claimQuest(opts: {
   return db.transaction(async (tx) => {
     const [quest] = await tx.select().from(quests).where(eq(quests.slug, opts.questSlug));
     if (!quest || !quest.active) throw new DomainError("BAD_STATE", "quest not found or inactive");
+
+    if (quest.requiresStart) {
+      const [started] = await tx
+        .select({ id: questStarts.id })
+        .from(questStarts)
+        .where(and(eq(questStarts.questId, quest.id), eq(questStarts.userId, opts.userId)));
+      if (!started) {
+        throw new DomainError("BAD_STATE", "open the task link first, then claim");
+      }
+    }
 
     let status: "approved" | "pending";
     if (quest.kind === "auto") {

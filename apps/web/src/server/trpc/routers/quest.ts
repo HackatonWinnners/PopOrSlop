@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
-import { questCompletions, quests, users } from "../../db/schema";
+import { questCompletions, questStarts, quests, users } from "../../db/schema";
 import {
   claimQuest,
   hashQuestCode,
@@ -23,12 +23,18 @@ export const questRouter = router({
       .where(eq(quests.active, true))
       .orderBy(desc(quests.reward));
     let mine = new Map<string, string>();
+    let started = new Set<string>();
     if (ctx.user) {
       const completions = await db
         .select({ questId: questCompletions.questId, status: questCompletions.status })
         .from(questCompletions)
         .where(eq(questCompletions.userId, ctx.user.id));
       mine = new Map(completions.map((c) => [c.questId, c.status]));
+      const starts = await db
+        .select({ questId: questStarts.questId })
+        .from(questStarts)
+        .where(eq(questStarts.userId, ctx.user.id));
+      started = new Set(starts.map((s) => s.questId));
     }
     return rows.map((q) => ({
       slug: q.slug,
@@ -37,6 +43,8 @@ export const questRouter = router({
       url: q.url,
       kind: q.kind as "auto" | "code" | "manual",
       autoApproveAfterS: q.autoApproveAfterS,
+      requiresStart: q.requiresStart,
+      started: started.has(q.id),
       reward: q.reward,
       myStatus: (mine.get(q.id) ?? null) as "pending" | "approved" | "rejected" | null,
     }));
@@ -71,6 +79,8 @@ export const questRouter = router({
         code: z.string().min(4).max(120).optional(),
         /** manual only: self-approve this many seconds after the claim. */
         autoApproveAfterS: z.number().int().min(0).max(86_400).optional(),
+        /** Require the user to follow the outbound link before claiming. */
+        requiresStart: z.boolean().optional(),
         rewardPoints: z.number().int().min(1).max(100_000),
       }),
     )
@@ -86,6 +96,7 @@ export const questRouter = router({
         rule: input.kind === "auto" ? input.rule : null,
         codeHash: input.kind === "code" ? hashQuestCode(input.code!) : null,
         autoApproveAfterS: input.kind === "manual" ? (input.autoApproveAfterS ?? null) : null,
+        requiresStart: Boolean(input.url) && (input.requiresStart ?? false),
         reward: BigInt(input.rewardPoints) * 1_000_000n,
       });
     }),
