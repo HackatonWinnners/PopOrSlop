@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     res.cookies.set(SESSION_COOKIE, session.token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: cookieSecure(),
+      secure: cookieSecure(req),
       expires: session.expiresAt,
       path: "/",
     });

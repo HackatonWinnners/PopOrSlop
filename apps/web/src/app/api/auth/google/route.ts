@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     // a Strict cookie would not be sent with it — the callback would see no
     // state and reject every legitimate sign-in.
     sameSite: "lax",
-    secure: cookieSecure(),
+    secure: cookieSecure(req),
     maxAge: OAUTH_STATE_TTL_S,
     path: "/",
   });

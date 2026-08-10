@@ -1,11 +1,19 @@
 export const SESSION_COOKIE = "pos_session";
 
 /**
- * Secure cookies require HTTPS end-to-end; browsers silently drop them over
- * plain http. Until the deployment has TLS (real domain), COOKIE_SECURE=false
- * keeps sessions working. Flip it back (or unset) once HTTPS is on.
+ * Whether to set the Secure flag, decided per request rather than globally.
+ *
+ * This deployment answers on two hostnames at once: the real domain over
+ * HTTPS, and the legacy sslip.io host over plain http. A single env flag
+ * can't be right for both — Secure cookies are silently dropped over http,
+ * so forcing it on would log out everyone still on the old host, and none
+ * of them have a verified email to sign back in with.
+ *
+ * So: trust the forwarded protocol. HTTPS requests get Secure cookies;
+ * plain-http ones keep working until the old host is retired.
  */
-export function cookieSecure(): boolean {
-  if (process.env.COOKIE_SECURE === "false") return false;
-  return process.env.NODE_ENV === "production";
+export function cookieSecure(req?: Request): boolean {
+  if (process.env.NODE_ENV !== "production") return false;
+  if (!req) return false;
+  return req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https";
 }

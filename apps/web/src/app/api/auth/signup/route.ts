@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: cookieSecure(),
+      secure: cookieSecure(req),
       expires: expiresAt,
       path: "/",
     });

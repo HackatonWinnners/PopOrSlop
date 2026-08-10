@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
+import { requestOrigin } from "~/server/request-origin";
 import { getSessionUser, verifyMagicLink } from "~/server/services/auth";
 import { SESSION_COOKIE, cookieSecure } from "~/server/session-cookie";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const origin = requestOrigin(req);
   const token = url.searchParams.get("token");
-  if (!token) return NextResponse.redirect(new URL("/join?link=invalid", url.origin));
+  if (!token) return NextResponse.redirect(new URL("/join?link=invalid", origin));
 
   const cookies = Object.fromEntries(
     (req.headers.get("cookie") ?? "")
@@ -17,16 +19,16 @@ export async function GET(req: Request) {
 
   try {
     const session = await verifyMagicLink(token, currentUser);
-    const res = NextResponse.redirect(new URL("/?email=verified", url.origin));
+    const res = NextResponse.redirect(new URL("/?email=verified", origin));
     res.cookies.set(SESSION_COOKIE, session.token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: cookieSecure(),
+      secure: cookieSecure(req),
       expires: session.expiresAt,
       path: "/",
     });
     return res;
   } catch {
-    return NextResponse.redirect(new URL("/join?link=invalid", url.origin));
+    return NextResponse.redirect(new URL("/join?link=invalid", origin));
   }
 }
