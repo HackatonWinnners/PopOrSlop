@@ -82,7 +82,12 @@ export function Nav() {
             </>
           ) : (
             <>
-              <Link href="/login" className="nav-link text-muted hover:text-ink">
+              {/* Same shape and weight as Join, outlined rather than filled:
+                  both read as buttons, but one of them still wins the eye. */}
+              <Link
+                href="/login"
+                className="rounded-[var(--radius-control)] border border-accent px-3 py-1.5 font-semibold text-accent hover:bg-accent-soft"
+              >
                 Log in
               </Link>
               <Link
