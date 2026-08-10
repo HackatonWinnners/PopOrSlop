@@ -1,16 +1,13 @@
 import "dotenv/config";
 import { db, pool } from "../src/server/db/client";
 import { quests } from "../src/server/db/schema";
-import { hashQuestCode } from "../src/server/services/quests";
 
 /**
- * Default quest set. Edit freely — quests are admin-manageable in the
- * console too. The partner-app quest code is printed once; share it with
- * the partner so their app can show it after signup.
+ * Default quest set. Edit freely — quests are admin-manageable in the console
+ * too. Real partners only: a placeholder quest is worse than no quest, because
+ * it's an unclaimable reward sitting at the top of the list.
  */
 async function main() {
-  const partnerCode = process.env.PARTNER_QUEST_CODE ?? `POPS-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-
   const rows = [
     {
       slug: "first-trade",
@@ -35,16 +32,6 @@ async function main() {
       kind: "auto",
       rule: "traded_3_markets",
       reward: 150n * 1_000_000n,
-    },
-    {
-      slug: "partner-app-signup",
-      title: "Sign up for our partner app",
-      description:
-        "Create an account on the partner app and finish its onboarding — it will show you a redemption code at the end. Enter it here.",
-      url: "https://example-partner.app/signup?utm_source=poporslop",
-      kind: "code",
-      codeHash: hashQuestCode(partnerCode),
-      reward: 1000n * 1_000_000n,
     },
     {
       slug: "facestic-sticker",
@@ -72,16 +59,21 @@ async function main() {
     await db
       .insert(quests)
       .values({
-        ...q,
+        slug: q.slug,
+        title: q.title,
+        description: q.description,
+        kind: q.kind,
+        reward: q.reward,
         url: "url" in q ? q.url : null,
         rule: "rule" in q ? q.rule : null,
-        codeHash: "codeHash" in q ? q.codeHash : null,
         autoApproveAfterS: "autoApproveAfterS" in q ? q.autoApproveAfterS : null,
+        // No code quests in the default set; the admin console creates those,
+        // since the code has to come from a partner who actually issues it.
+        codeHash: null,
       })
       .onConflictDoNothing();
     console.log(`quest: ${q.slug} (+${q.reward / 1_000_000n} pts)`);
   }
-  console.log(`\npartner redemption code (share with the partner app): ${partnerCode}`);
   await pool.end();
 }
 
