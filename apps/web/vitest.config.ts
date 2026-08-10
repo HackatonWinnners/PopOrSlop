@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { defineConfig } from "vitest/config";
 import path from "node:path";
 
@@ -8,8 +9,11 @@ export default defineConfig({
     fileParallelism: false,
     env: {
       TEST: "1",
+      // From your own .env — never hardcode a real one here, this file is
+      // committed. Falls back to the docker-compose default.
       TEST_DATABASE_URL:
-        "postgres://postgres:VNXIlCJXWvVkcBaFI89DW0K5fzUkLsPeRfnANROxbmK3IbuZ7RQQIbo6Dy5sEOAJ@localhost:15432/poporslop_test",
+        process.env.TEST_DATABASE_URL ??
+        "postgres://poporslop:poporslop@localhost:5433/poporslop_test",
       // Tests create fresh users; the 7-day cap is exercised explicitly, not ambiently.
       NEW_ACCOUNT_CAP_PTS: "1000000",
     },
