@@ -267,6 +267,12 @@ export async function verifyMagicLink(
 }
 
 
+/** Delete a session so its token stops working immediately. */
+export async function revokeSession(token: string | undefined): Promise<void> {
+  if (!token) return;
+  await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)));
+}
+
 export async function getSessionUser(token: string | undefined) {
   if (!token) return null;
   const [row] = await db

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { fmtPts } from "~/lib/format";
 import { trpc } from "~/lib/trpc";
@@ -13,6 +14,29 @@ const LINKS = [
   ["/leaderboard", "Leaderboard"],
   ["/quests", "Quests"],
 ] as const;
+
+/**
+ * Sign out, then hard-navigate rather than router.push: the session cookie is
+ * gone, but every cached tRPC result in memory still belongs to the old user,
+ * and a soft navigation would keep showing their balance and positions.
+ */
+function SignOut({ className = "" }: { className?: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+        window.location.href = "/";
+      }}
+      className={`nav-link text-muted hover:text-ink disabled:opacity-50 ${className}`}
+    >
+      {busy ? "…" : "Log out"}
+    </button>
+  );
+}
 
 export function Nav() {
   const pathname = usePathname();
@@ -54,6 +78,7 @@ export function Nav() {
               <span className="tnum rounded-[var(--radius-control)] bg-accent-soft px-2 py-1 text-accent">
                 {fmtPts(me.data.pointsBalance)} pts
               </span>
+              <SignOut className="hidden sm:inline" />
             </>
           ) : (
             <>
@@ -97,7 +122,12 @@ export function Nav() {
             Admin
           </Link>
         )}
-        {me.data && <span className="shrink-0 text-faint">@{me.data.handle}</span>}
+        {me.data && (
+          <>
+            <span className="shrink-0 text-faint">@{me.data.handle}</span>
+            <SignOut className="shrink-0" />
+          </>
+        )}
       </div>
     </nav>
   );
