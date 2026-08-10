@@ -171,20 +171,85 @@ async function markVerified(tx: Tx, userId: string, email: string): Promise<void
     });
 }
 
+export type SessionUser = Awaited<ReturnType<typeof getSessionUser>>;
+
 /**
- * Verify a one-time email token and resolve it to a session. Clicking the
- * link is proof of mailbox ownership, so every path below also stamps
- * `email_verified_at`:
- * - token's email already owns an account → sign that account in;
+ * Resolve a *proven* address to an account, creating one if needed.
+ *
+ * Both sign-in routes end here — a clicked magic link and a Google ID token
+ * answer the same question ("does this person control this mailbox?"), so
+ * they must resolve identity identically or the two paths drift into
+ * different notions of who owns an address. Every branch stamps
+ * `email_verified_at`, because reaching this function *is* the proof:
+ * - the address already owns an account → sign that account in;
  * - visitor is signed in to an account with no verified email → attach it
  *   (the account-merge path for event signups);
  * - some account is *pending* this address (signup claim) → promote it;
  * - otherwise → create a fresh funded account with a handle derived from the
  *   email local part.
  */
+async function resolveProvenEmail(
+  tx: Tx,
+  email: string,
+  currentUser: SessionUser,
+): Promise<string> {
+  const [owner] = await tx.select().from(users).where(eq(users.email, email));
+  if (owner) {
+    // Pre-verification accounts (and W0 event signups) get stamped on first proof.
+    if (!owner.emailVerifiedAt) await markVerified(tx, owner.id, email);
+    return owner.id;
+  }
+
+  if (currentUser && !currentUser.email && !currentUser.isSystem) {
+    await markVerified(tx, currentUser.id, email);
+    return currentUser.id;
+  }
+
+  const [claimant] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.pendingEmail, email))
+    .orderBy(asc(users.createdAt))
+    .limit(1);
+  if (claimant) {
+    await markVerified(tx, claimant.id, email);
+    return claimant.id;
+  }
+
+  const base =
+    email
+      .split("@")[0]!
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .slice(0, 20) || "trader";
+  let handle = base.length >= 2 ? base : `${base}42`;
+  for (let i = 0; ; i++) {
+    const [taken] = await tx.select({ id: users.id }).from(users).where(eq(users.handle, handle));
+    if (!taken) break;
+    handle = `${base.slice(0, 16)}${randomBytes(2).toString("hex")}`;
+    if (i > 5) throw new DomainError("BAD_STATE", "could not allocate handle");
+  }
+  const [created] = await tx
+    .insert(users)
+    .values({ handle, email, emailVerifiedAt: new Date() })
+    .returning({ id: users.id });
+  await postEntries(tx, [
+    { userId: SYSTEM.houseTreasury, delta: -SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
+    { userId: created!.id, delta: SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
+  ]);
+  return created!.id;
+}
+
+async function issueSession(tx: Tx, userId: string): Promise<{ token: string; expiresAt: Date }> {
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  await tx.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt });
+  return { token, expiresAt };
+}
+
+/** Verify a one-time email token (magic link or signup confirmation). */
 export async function verifyMagicLink(
   token: string,
-  currentUser: Awaited<ReturnType<typeof getSessionUser>>,
+  currentUser: SessionUser,
 ): Promise<{ token: string; expiresAt: Date }> {
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -196,55 +261,25 @@ export async function verifyMagicLink(
     }
     await tx.update(magicLinkTokens).set({ usedAt: new Date() }).where(eq(magicLinkTokens.id, row.id));
 
-    const [owner] = await tx.select().from(users).where(eq(users.email, row.email));
+    const userId = await resolveProvenEmail(tx, row.email, currentUser);
+    return issueSession(tx, userId);
+  });
+}
 
-    let userId: string;
-    if (owner) {
-      // Pre-verification accounts (and W0 event signups) get stamped on first click.
-      if (!owner.emailVerifiedAt) await markVerified(tx, owner.id, row.email);
-      userId = owner.id;
-    } else if (currentUser && !currentUser.email && !currentUser.isSystem) {
-      await markVerified(tx, currentUser.id, row.email);
-      userId = currentUser.id;
-    } else {
-      const [claimant] = await tx
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.pendingEmail, row.email))
-        .orderBy(asc(users.createdAt))
-        .limit(1);
-      if (claimant) {
-        await markVerified(tx, claimant.id, row.email);
-        userId = claimant.id;
-      } else {
-        const base =
-          row.email
-            .split("@")[0]!
-            .replace(/[^a-zA-Z0-9_-]/g, "")
-            .slice(0, 20) || "trader";
-        let handle = base.length >= 2 ? base : `${base}42`;
-        for (let i = 0; ; i++) {
-          const [taken] = await tx.select({ id: users.id }).from(users).where(eq(users.handle, handle));
-          if (!taken) break;
-          handle = `${base.slice(0, 16)}${randomBytes(2).toString("hex")}`;
-          if (i > 5) throw new DomainError("BAD_STATE", "could not allocate handle");
-        }
-        const [created] = await tx
-          .insert(users)
-          .values({ handle, email: row.email, emailVerifiedAt: new Date() })
-          .returning({ id: users.id });
-        await postEntries(tx, [
-          { userId: SYSTEM.houseTreasury, delta: -SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
-          { userId: created!.id, delta: SIGNUP_GRANT, reason: "SIGNUP_GRANT", refId: created!.id },
-        ]);
-        userId = created!.id;
-      }
-    }
-
-    const sessionToken = randomBytes(32).toString("base64url");
-    const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-    await tx.insert(sessions).values({ userId, tokenHash: hashToken(sessionToken), expiresAt });
-    return { token: sessionToken, expiresAt };
+/**
+ * Sign in an address proven by an external identity provider. The caller is
+ * responsible for having actually verified it — see the Google callback route,
+ * which only reaches here with an `email_verified` ID token claim obtained
+ * directly from Google's token endpoint.
+ */
+export async function signInWithProvenEmail(
+  email: string,
+  currentUser: SessionUser,
+): Promise<{ token: string; expiresAt: Date }> {
+  const normalized = email.trim().toLowerCase();
+  return db.transaction(async (tx) => {
+    const userId = await resolveProvenEmail(tx, normalized, currentUser);
+    return issueSession(tx, userId);
   });
 }
 

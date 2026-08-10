@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requestOrigin } from "~/server/request-origin";
 import { DomainError } from "~/server/services/errors";
 import { signup } from "~/server/services/auth";
 import { SESSION_COOKIE, cookieSecure } from "~/server/session-cookie";
@@ -37,15 +38,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid input" }, { status: 400 });
   }
   try {
-    const proto = req.headers.get("x-forwarded-proto") ?? "http";
-    const host = req.headers.get("host") ?? "localhost:3000";
     const { token, expiresAt, verificationSent } = await signup({
       handle: parsed.data.handle,
       team: parsed.data.team || undefined,
       email: parsed.data.email || undefined,
       ref: parsed.data.ref || undefined,
       deviceFp: parsed.data.deviceFp || undefined,
-      baseUrl: `${proto}://${host}`,
+      baseUrl: requestOrigin(req),
     });
     const res = NextResponse.json({ ok: true, verificationSent });
     res.cookies.set(SESSION_COOKIE, token, {

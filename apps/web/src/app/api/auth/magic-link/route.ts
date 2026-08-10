@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { requestOrigin } from "~/server/request-origin";
 import { requestMagicLink } from "~/server/services/auth";
 
 const bodySchema = z.object({ email: z.string().email() });
@@ -22,9 +23,7 @@ export async function POST(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (parsed.success && !rateLimited(ip)) {
-    const proto = req.headers.get("x-forwarded-proto") ?? "http";
-    const host = req.headers.get("host") ?? "localhost:3000";
-    await requestMagicLink(parsed.data.email, `${proto}://${host}`).catch((e) =>
+    await requestMagicLink(parsed.data.email, requestOrigin(req)).catch((e) =>
       console.error("[auth] magic link request failed:", e),
     );
   }

@@ -49,18 +49,27 @@ function Banner() {
           <span>
             Confirm <b>{claimed}</b> to keep your account (and claim the verify-email quest).
           </span>
+          <a href="/api/auth/google" className="shrink-0 font-semibold text-accent underline underline-offset-2">
+            Verify with Google
+          </a>
           <button
             type="button"
             onClick={() => send.mutate({})}
             disabled={send.isPending}
-            className="shrink-0 font-semibold text-accent underline underline-offset-2 disabled:opacity-50"
+            className="shrink-0 text-muted underline underline-offset-2 hover:text-ink disabled:opacity-50"
           >
-            {send.isPending ? "sending…" : "Resend link"}
+            {send.isPending ? "sending…" : "or email me a link"}
           </button>
         </>
       ) : (
         <>
-          <span className="shrink-0">Add an email so your account survives the event:</span>
+          <span className="shrink-0">
+            Keep your account past the event —{" "}
+            <a href="/api/auth/google" className="font-semibold text-accent underline underline-offset-2">
+              verify with Google
+            </a>
+            , or:
+          </span>
           <form
             className="flex min-w-0 flex-1 gap-2"
             onSubmit={(e) => {
