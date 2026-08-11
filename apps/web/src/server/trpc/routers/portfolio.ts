@@ -1,6 +1,7 @@
 import { pricesMicro } from "@poporslop/lmsr";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
+import { SUMMERUP_MARKET_SLUG } from "~/lib/summerup-teams";
 import { db } from "../../db/client";
 import { lmsrState, markets, positions, users } from "../../db/schema";
 import { authedProcedure, publicProcedure, router } from "../trpc";
@@ -117,24 +118,179 @@ export const portfolioRouter = router({
     }),
 
   /**
-   * Two leaderboards (spec §6.3): realized P&L from the ledger
-   * (TRADE + PAYOUT + NA_REFUND flows) all-time and over 90 days.
+   * Leaderboards (spec §6.3) — four views over one trading record.
+   *
+   * All of them read only TRADE / PAYOUT / NA_REFUND, so signup grants, drip,
+   * referrals and quest rewards can never buy rank.
+   *
+   * `net` is the headline. `realized` alone is honest but misleading before
+   * anything resolves: a buy is pure outflow and nothing pays until resolution,
+   * so every trader shows a loss and the top of the board is whoever traded
+   * least. Adding the current value of open positions fixes that.
+   *
+   * `net` is cash + mark. After resolution the position rows are deleted, mark
+   * goes to zero and it collapses back to plain realized cash — nothing to
+   * special-case.
+   *
+   * Splitting that into banked-vs-open needs average-cost accounting, which the
+   * schema doesn't carry: `positions.cost_basis` is *net cash into the position*
+   * and turns negative once you've sold at a profit, so `cash + basis` is
+   * identically zero. Hence the trade replay below. It's O(trades) per call on a
+   * table with a hundred rows today; materialize realized P&L onto the position
+   * if that stops being true.
+   *
+   * Marks are mid-price and ignore slippage: a big position is worth somewhat
+   * less than it shows, because selling it walks the price down.
    */
   leaderboard: publicProcedure.query(async () => {
-    const q = (interval: string | null) => sql<
-      { handle: string; team: string | null; pnl: bigint }[]
-    >`SELECT u.handle, u.team, SUM(l.delta)::bigint AS pnl
-      FROM ledger l JOIN users u ON u.id = l.user_id
-      WHERE u.is_system = false
-        AND l.reason IN ('TRADE', 'PAYOUT', 'NA_REFUND')
+    const active = and(
+      eq(users.isSystem, false),
+      sql`COALESCE((${users.flags}->>'banned')::boolean, false) = false`,
+    );
+
+    const cashSince = (interval: string | null) => sql`
+      SELECT l.user_id, SUM(l.delta)::bigint AS cash
+      FROM ledger l
+      WHERE l.reason IN ('TRADE', 'PAYOUT', 'NA_REFUND')
         ${interval ? sql`AND l.ts > now() - ${interval}::interval` : sql``}
-      GROUP BY u.id, u.handle, u.team
-      ORDER BY pnl DESC
-      LIMIT 50`;
-    const [allTime, last90] = await Promise.all([
-      db.execute<{ handle: string; team: string | null; pnl: bigint }>(q(null)),
-      db.execute<{ handle: string; team: string | null; pnl: bigint }>(q("90 days")),
+      GROUP BY l.user_id`;
+
+    const [people, cashAll, cash90, held, eventRows] = await Promise.all([
+      db.select({ id: users.id, handle: users.handle, team: users.team }).from(users).where(active),
+      db.execute<{ user_id: string; cash: bigint }>(cashSince(null)),
+      db.execute<{ user_id: string; cash: bigint }>(cashSince("90 days")),
+      db
+        .select({
+          userId: positions.userId,
+          marketId: positions.marketId,
+          outcomeIdx: positions.outcomeIdx,
+          shares: positions.shares,
+          b: markets.b,
+          q: lmsrState.q,
+        })
+        .from(positions)
+        .innerJoin(markets, eq(markets.id, positions.marketId))
+        .leftJoin(lmsrState, eq(lmsrState.marketId, positions.marketId)),
+      db.select({ id: markets.id }).from(markets).where(eq(markets.slug, SUMMERUP_MARKET_SLUG)),
     ]);
-    return { allTime: allTime.rows, last90: last90.rows };
+
+    const eventId = eventRows[0]?.id ?? null;
+
+    // One price vector per market, shared by everyone holding it.
+    const priceCache = new Map<string, number[] | null>();
+    const pricesFor = (marketId: string, q: bigint[] | null, b: bigint) => {
+      if (!priceCache.has(marketId)) priceCache.set(marketId, q ? pricesMicro({ q, b }) : null);
+      return priceCache.get(marketId)!;
+    };
+
+    const addTo = (m: Map<string, bigint>, id: string, v: bigint) =>
+      m.set(id, (m.get(id) ?? 0n) + v);
+
+    const mark = new Map<string, bigint>();
+    const eventMark = new Map<string, bigint>();
+    for (const p of held) {
+      const price = pricesFor(p.marketId, p.q, p.b)?.[p.outcomeIdx];
+      if (price === undefined) continue;
+      const value = (p.shares * BigInt(price)) / 1_000_000n;
+      addTo(mark, p.userId, value);
+      if (p.marketId === eventId) addTo(eventMark, p.userId, value);
+    }
+
+    // Average-cost replay: walk every trade in order, and on each sell book the
+    // difference between the proceeds and the average cost of the shares sold.
+    const realized = new Map<string, bigint>();
+    const eventRealized = new Map<string, bigint>();
+    const lot = new Map<string, { shares: bigint; basis: bigint }>();
+    const tape = await db.execute<{
+      user_id: string;
+      market_id: string;
+      outcome_idx: number;
+      delta_shares: bigint;
+      cost: bigint;
+    }>(sql`
+      SELECT user_id, market_id, outcome_idx, delta_shares, cost
+      FROM trades ORDER BY ts, id`);
+
+    for (const t of tape.rows) {
+      const key = `${t.user_id}|${t.market_id}|${t.outcome_idx}`;
+      const cur = lot.get(key) ?? { shares: 0n, basis: 0n };
+      const delta = BigInt(t.delta_shares);
+      const cost = BigInt(t.cost);
+      if (delta > 0n) {
+        cur.shares += delta;
+        cur.basis += cost;
+      } else {
+        const sold = -delta;
+        // Proportional share of what the holding cost. Guard the divide: a
+        // forced void (admin voidAndBan) can sell shares the lot doesn't know.
+        const spent = cur.shares > 0n ? (cur.basis * sold) / cur.shares : 0n;
+        const gain = -cost - spent;
+        cur.basis -= spent;
+        cur.shares -= sold > cur.shares ? cur.shares : sold;
+        addTo(realized, t.user_id, gain);
+        if (t.market_id === eventId) addTo(eventRealized, t.user_id, gain);
+      }
+      lot.set(key, cur);
+    }
+
+    // Cash on a single market can't come from the ledger — TRADE rows aren't
+    // market-scoped. The trades table is, and PAYOUT / NA_REFUND carry the
+    // market id in ref_id.
+    const eventCash = new Map<string, bigint>();
+    if (eventId) {
+      const [spent, paid] = await Promise.all([
+        db.execute<{ user_id: string; cost: bigint }>(
+          sql`SELECT t.user_id, SUM(t.cost)::bigint AS cost
+              FROM trades t WHERE t.market_id = ${eventId} GROUP BY t.user_id`,
+        ),
+        db.execute<{ user_id: string; delta: bigint }>(
+          sql`SELECT l.user_id, SUM(l.delta)::bigint AS delta
+              FROM ledger l
+              WHERE l.ref_id = ${eventId} AND l.reason IN ('PAYOUT', 'NA_REFUND')
+              GROUP BY l.user_id`,
+        ),
+      ]);
+      for (const r of spent.rows) eventCash.set(r.user_id, -BigInt(r.cost));
+      for (const r of paid.rows) {
+        eventCash.set(r.user_id, (eventCash.get(r.user_id) ?? 0n) + BigInt(r.delta));
+      }
+    }
+
+    const cashOf = (rows: { user_id: string; cash: bigint }[]) =>
+      new Map(rows.map((r) => [r.user_id, BigInt(r.cash)]));
+    const allCash = cashOf(cashAll.rows);
+    const recentCash = cashOf(cash90.rows);
+
+    const board = (of: (userId: string) => { pnl: bigint; banked: bigint; open: bigint }) =>
+      people
+        .map((u) => ({ handle: u.handle, team: u.team, ...of(u.id) }))
+        .filter((r) => r.pnl !== 0n || r.open !== 0n)
+        .sort((a, b) => (a.pnl === b.pnl ? 0 : a.pnl < b.pnl ? 1 : -1))
+        .slice(0, 50);
+
+    /** net = cash + mark, split so that banked + open === pnl exactly. */
+    const netOf = (cash: bigint, marked: bigint, booked: bigint) => {
+      const pnl = cash + marked;
+      return { pnl, banked: booked, open: pnl - booked };
+    };
+
+    return {
+      net: board((id) =>
+        netOf(allCash.get(id) ?? 0n, mark.get(id) ?? 0n, realized.get(id) ?? 0n),
+      ),
+      realized: board((id) => {
+        const cash = allCash.get(id) ?? 0n;
+        return { pnl: cash, banked: cash, open: 0n };
+      }),
+      realized90: board((id) => {
+        const cash = recentCash.get(id) ?? 0n;
+        return { pnl: cash, banked: cash, open: 0n };
+      }),
+      summerup: eventId
+        ? board((id) =>
+            netOf(eventCash.get(id) ?? 0n, eventMark.get(id) ?? 0n, eventRealized.get(id) ?? 0n),
+          )
+        : [],
+    };
   }),
 });

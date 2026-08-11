@@ -15,6 +15,10 @@ export default function LivePage() {
   const ticker = trpc.market.ticker.useQuery({ limit: 12 }, { refetchInterval: 2000 });
   const stats = trpc.market.stats.useQuery(undefined, { refetchInterval: 10_000 });
 
+  // The venue screen is the event's screen: show the prize board when there is
+  // one, and fall back to overall net P&L outside the event.
+  const eventBoard = board.data?.summerup?.length ? board.data.summerup : (board.data?.net ?? []);
+
   const flagships = (markets.data ?? [])
     .filter((m) => m.status === "OPEN" || m.status === "RESOLVED")
     .sort((a, b) => b.bPoints - a.bPoints)
@@ -43,9 +47,11 @@ export default function LivePage() {
       <div className="flex flex-1 items-center justify-center">
         {showLeaderboard ? (
           <div className="w-full max-w-3xl">
-            <h2 className="mb-6 text-4xl font-bold">Leaderboard</h2>
+            <h2 className="mb-6 text-4xl font-bold">
+              {eventBoard.length > 0 ? "SummerUp — €100 standings" : "Leaderboard"}
+            </h2>
             <ol className="space-y-3">
-              {(board.data?.allTime ?? []).slice(0, 8).map((r, i) => (
+              {eventBoard.slice(0, 8).map((r, i) => (
                 <li key={r.handle} className="flex items-center gap-4 text-3xl">
                   <span className="w-10 text-right font-mono text-faint">{i + 1}</span>
                   <span className="font-semibold">@{r.handle}</span>
