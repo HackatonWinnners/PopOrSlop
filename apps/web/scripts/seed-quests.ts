@@ -63,6 +63,18 @@ async function main() {
       reward: 100n * 1_000_000n,
     },
     {
+      slug: "follow-instagram",
+      title: "Follow @poporslop on Instagram",
+      description:
+        "Follow us on Instagram, then claim here. Your claim clears automatically a few minutes later.",
+      url: "https://instagram.com/poporslop",
+      kind: "manual",
+      // Unverifiable for the same reason as follow-x — see the note there.
+      autoApproveAfterS: 300,
+      requiresStart: true,
+      reward: 100n * 1_000_000n,
+    },
+    {
       slug: "spread-the-word",
       title: "Post about a market you traded",
       description:

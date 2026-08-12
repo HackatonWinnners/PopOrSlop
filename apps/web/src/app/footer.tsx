@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const X_URL = "https://x.com/poporslop";
-
 function XMark() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden className="h-3.5 w-3.5 fill-current">
@@ -13,11 +11,40 @@ function XMark() {
   );
 }
 
+/** Drawn from primitives rather than a path — same glyph, a tenth the bytes. */
+function InstagramMark() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="h-3.5 w-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+    >
+      <rect x="2.2" y="2.2" width="19.6" height="19.6" rx="5.5" />
+      <circle cx="12" cy="12" r="4.6" />
+      <circle cx="17.6" cy="6.4" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+const SOCIALS = [
+  { href: "https://x.com/poporslop", label: "@poporslop", Mark: XMark },
+  { href: "https://instagram.com/poporslop", label: "@poporslop", Mark: InstagramMark },
+] as const;
+
+const PAGES = [
+  ["/batch-odds", "Batch odds"],
+  ["/live", "Big-screen mode"],
+  ["/list-your-startup", "List your startup"],
+] as const;
+
 /**
- * Site footer — mostly here to give the X account a permanent home. The quest
- * pays for one follow; this is where everyone who isn't hunting points finds
- * it. Also carries the play-money disclaimer on every page rather than only
- * where someone thought to write it.
+ * Site footer — mostly here to give the social accounts a permanent home. The
+ * quests pay for one follow each; this is where everyone who isn't hunting
+ * points finds them. Also carries the play-money disclaimer on every page
+ * rather than only where someone thought to write it.
  */
 export function Footer() {
   const pathname = usePathname();
@@ -26,24 +53,23 @@ export function Footer() {
   return (
     <footer className="mx-auto w-full max-w-[var(--shell)] border-t border-line px-5 py-6 text-xs text-faint">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <a
-          href={X_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 font-semibold text-muted hover:text-accent"
-        >
-          <XMark />
-          @poporslop
-        </a>
-        <Link href="/batch-odds" className="text-muted hover:text-accent">
-          Batch odds
-        </Link>
-        <Link href="/live" className="text-muted hover:text-accent">
-          Big-screen mode
-        </Link>
-        <Link href="/list-your-startup" className="text-muted hover:text-accent">
-          List your startup
-        </Link>
+        {SOCIALS.map(({ href, label, Mark }) => (
+          <a
+            key={href}
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 font-semibold text-muted hover:text-accent"
+          >
+            <Mark />
+            {label}
+          </a>
+        ))}
+        {PAGES.map(([href, label]) => (
+          <Link key={href} href={href} className="text-muted hover:text-accent">
+            {label}
+          </Link>
+        ))}
         <span className="basis-full sm:ml-auto sm:basis-auto">
           Points are play money — no cash value, no redemption.
         </span>
