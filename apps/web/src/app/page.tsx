@@ -66,15 +66,6 @@ export default function StartupsPage() {
           ))}
         </div>
       </section>
-
-      <footer className="flex gap-5 border-t border-line pt-5 text-sm">
-        <Link href="/batch-odds" className="text-accent hover:underline">
-          Batch odds — public data
-        </Link>
-        <Link href="/live" className="text-accent hover:underline">
-          Big-screen mode
-        </Link>
-      </footer>
     </div>
   );
 }

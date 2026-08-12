@@ -48,6 +48,21 @@ async function main() {
       reward: 500n * 1_000_000n,
     },
     {
+      slug: "follow-x",
+      title: "Follow @poporslop on X",
+      description:
+        "Follow us on X, then claim here. Your claim clears automatically a few minutes later.",
+      url: "https://x.com/poporslop",
+      kind: "manual",
+      // Same stopgap as the Facestic quest: nothing here checks the follow, so
+      // the outbound click is the only fact we actually have. Reward is small
+      // for that reason — set autoApproveAfterS to null and wire the X API if
+      // this ever needs to be worth more than a click.
+      autoApproveAfterS: 300,
+      requiresStart: true,
+      reward: 100n * 1_000_000n,
+    },
+    {
       slug: "spread-the-word",
       title: "Post about a market you traded",
       description:
